@@ -134,98 +134,62 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
   return (
     <div>
       {/* Top Month Selector and Financial Summary */}
-      <div className="glass-card" style={{ padding: 24, marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+      <div className="glass-card month-overview-card">
+        <div className="month-card-header">
           {/* Month Selector Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="month-selector-group">
             <button id="btn-month-prev" className="btn btn-secondary btn-icon" onClick={prevMonth} title="Mese Precedente">
               <ChevronLeft size={20} />
             </button>
 
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Mese di Controllo Canoni
-              </div>
-              <h2 style={{ fontSize: '1.5rem', lineHeight: 1.1, color: '#ffffff' }}>
-                {monthLabel}
-              </h2>
+            <div className="month-title-wrapper">
+              <span className="month-subtitle">Mese di Controllo Canoni</span>
+              <h2 className="month-title-text">{monthLabel}</h2>
             </div>
 
             <button id="btn-month-next" className="btn btn-secondary btn-icon" onClick={nextMonth} title="Mese Successivo">
               <ChevronRight size={20} />
             </button>
 
-            <button className="btn btn-secondary btn-sm" onClick={goToToday} style={{ marginLeft: 6 }}>
-              Mese Corrente
+            <button className="btn btn-secondary btn-sm btn-month-today" onClick={goToToday}>
+              Oggi
             </button>
           </div>
 
-          {/* Per-Person KPI Pills */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {/* Per-Person KPI Grid */}
+          <div className="month-kpis-grid">
             {/* Studenti Totali */}
-            <div style={{ 
-              background: 'rgba(9, 14, 26, 0.6)', 
-              border: '1px solid var(--border-subtle)', 
-              borderRadius: 'var(--radius-md)', 
-              padding: '10px 16px',
-              textAlign: 'center'
-            }}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Studenti Registrati</span>
-              <strong style={{ fontSize: '1.25rem', color: '#ffffff' }}>{activeTenants.length} ragazzi</strong>
+            <div className="month-kpi-item">
+              <span className="kpi-label">Studenti</span>
+              <strong className="kpi-val">{activeTenants.length} ragazzi</strong>
             </div>
 
             {/* Quanti hanno pagato */}
-            <div style={{ 
-              background: pendingTenantsThisMonth.length === 0 && activeTenants.length > 0 
-                ? 'rgba(16, 185, 129, 0.15)' 
-                : 'rgba(99, 102, 241, 0.12)', 
-              border: `1px solid ${pendingTenantsThisMonth.length === 0 && activeTenants.length > 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.3)'}`, 
-              borderRadius: 'var(--radius-md)', 
-              padding: '10px 16px',
-              textAlign: 'center'
-            }}>
-              <span style={{ fontSize: '0.72rem', color: '#a5b4fc', display: 'block' }}>Stato Saldati</span>
-              <strong style={{ fontSize: '1.25rem', color: pendingTenantsThisMonth.length === 0 && activeTenants.length > 0 ? '#10b981' : '#818cf8' }}>
+            <div className={`month-kpi-item ${pendingTenantsThisMonth.length === 0 && activeTenants.length > 0 ? 'kpi-success' : 'kpi-brand'}`}>
+              <span className="kpi-label">Saldati</span>
+              <strong className="kpi-val">
                 {paidTenantsThisMonth.length} / {activeTenants.length}
               </strong>
             </div>
 
             {/* Totale Canoni Attesi */}
-            <div style={{ 
-              background: 'rgba(9, 14, 26, 0.6)', 
-              border: '1px solid var(--border-subtle)', 
-              borderRadius: 'var(--radius-md)', 
-              padding: '10px 16px',
-              textAlign: 'center'
-            }}>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Totale Atteso</span>
-              <strong style={{ fontSize: '1.25rem', color: '#ffffff' }}>€{expectedTotal}</strong>
+            <div className="month-kpi-item">
+              <span className="kpi-label">Totale Atteso</span>
+              <strong className="kpi-val">€{expectedTotal}</strong>
             </div>
 
             {/* Incassato */}
-            <div style={{ 
-              background: 'rgba(16, 185, 129, 0.1)', 
-              border: '1px solid rgba(16, 185, 129, 0.3)', 
-              borderRadius: 'var(--radius-md)', 
-              padding: '10px 16px',
-              textAlign: 'center'
-            }}>
-              <span style={{ fontSize: '0.72rem', color: '#34d399', display: 'block' }}>Incassato</span>
-              <strong style={{ fontSize: '1.25rem', color: '#10b981' }}>€{collectedTotal}</strong>
+            <div className="month-kpi-item kpi-success">
+              <span className="kpi-label">Incassato</span>
+              <strong className="kpi-val text-success">€{collectedTotal}</strong>
             </div>
 
             {/* Da Incassare */}
-            <div style={{ 
-              background: pendingTotal > 0 ? 'rgba(244, 63, 94, 0.1)' : 'rgba(16, 185, 129, 0.05)', 
-              border: `1px solid ${pendingTotal > 0 ? 'rgba(244, 63, 94, 0.3)' : 'var(--border-subtle)'}`, 
-              borderRadius: 'var(--radius-md)', 
-              padding: '10px 16px',
-              textAlign: 'center'
-            }}>
-              <span style={{ fontSize: '0.72rem', color: pendingTotal > 0 ? '#fb7185' : 'var(--text-muted)', display: 'block' }}>
-                {pendingTotal > 0 ? 'Da Incassare' : 'Tutto Saldato'}
+            <div className={`month-kpi-item kpi-full-width ${pendingTotal > 0 ? 'kpi-danger' : 'kpi-success-subtle'}`}>
+              <span className="kpi-label">
+                {pendingTotal > 0 ? 'Da Incassare' : 'Tutto Saldato ✓'}
               </span>
-              <strong style={{ fontSize: '1.25rem', color: pendingTotal > 0 ? '#fb7185' : '#10b981' }}>
+              <strong className={`kpi-val ${pendingTotal > 0 ? 'text-danger' : 'text-success'}`}>
                 €{pendingTotal}
               </strong>
             </div>
@@ -234,12 +198,12 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-card" style={{ padding: '16px 20px', marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+      <div className="glass-card filter-toolbar-card">
+        <div className="filter-toolbar-inner">
           {/* Quick Filters */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Filter size={14} /> Filtra:
+          <div className="filter-chips-scroll">
+            <span className="filter-label-chip">
+              <Filter size={13} />
             </span>
 
             <button
@@ -254,7 +218,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
               style={filterStatus === 'pending' ? { background: '#f43f5e', color: '#ffffff' } : {}}
               onClick={() => setFilterStatus('pending')}
             >
-              Solo da Pagare ({pendingTenantsThisMonth.length})
+              Da Pagare ({pendingTenantsThisMonth.length})
             </button>
 
             <button
@@ -280,12 +244,11 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
           </div>
 
           {/* Search Box */}
-          <div style={{ position: 'relative', minWidth: 220 }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--text-muted)' }} />
+          <div className="filter-search-box">
+            <Search size={14} className="search-icon" />
             <input
               type="text"
-              className="form-input"
-              style={{ paddingLeft: 32, fontSize: '0.82rem', padding: '6px 10px 6px 32px' }}
+              className="form-input search-input"
               placeholder="Cerca studente..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -465,7 +428,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                   </div>
 
                   {/* Action Buttons for this student */}
-                  <div style={{ display: 'flex', gap: 10 }}>
+                  <div className="student-card-actions" style={{ display: 'flex', gap: 10 }}>
                     {!isPaid ? (
                       <button
                         className="btn btn-success"

@@ -180,18 +180,14 @@ export const ExpensesView: FC<ExpensesViewProps> = ({
             onClick={onOpenNewExpenseModal}
           >
             <Plus size={16} />
-            <span>+ Registra Nuova Spesa / Bolletta</span>
+            <span className="btn-text-full">+ Registra Nuova Spesa / Bolletta</span>
+            <span className="btn-text-short">+ Spesa</span>
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', 
-        gap: 16, 
-        marginBottom: 20 
-      }}>
+      <div className="stats-grid" style={{ marginBottom: 20 }}>
         {/* Card 1: Uscite Totali */}
         <div className="glass-card stat-card" style={{ ['--stat-glow' as string]: '#f43f5e' }}>
           <div className="stat-header">

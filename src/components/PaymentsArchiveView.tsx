@@ -119,7 +119,8 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
               onClick={onOpenRecordPayment}
             >
               <PlusCircle size={15} />
-              <span>+ Registra Pagamento</span>
+              <span className="btn-text-full">+ Registra Pagamento</span>
+              <span className="btn-text-short">+ Incasso</span>
             </button>
           </div>
         </div>

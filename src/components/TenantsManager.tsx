@@ -78,7 +78,8 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
             onClick={() => onOpenNewTenantModal()}
           >
             <UserPlus size={16} />
-            <span>+ Aggiungi Nuovo Studente</span>
+            <span className="btn-text-full">+ Aggiungi Nuovo Studente</span>
+            <span className="btn-text-short">+ Studente</span>
           </button>
         </div>
       </div>

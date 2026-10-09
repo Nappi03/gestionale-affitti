@@ -675,23 +675,465 @@ button, input, select, textarea {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Responsive adjustments */
+/* Visibility helpers for responsive labels */
+.btn-text-short, .tab-label-short {
+  display: none;
+}
+.btn-text-full, .tab-label-full {
+  display: inline;
+}
+
+/* Cloud Status Badge */
+.cloud-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.cloud-status-badge .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.cloud-status-badge .status-dot.connected {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+.cloud-status-badge .status-dot.local {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+.cloud-status-badge .status-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #34d399;
+}
+
+/* Month Overview Card */
+.month-overview-card {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.month-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.month-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.month-title-wrapper {
+  text-align: left;
+}
+
+.month-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  display: block;
+}
+
+.month-title-text {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.btn-month-today {
+  margin-left: 6px;
+}
+
+.month-kpis-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.month-kpi-item {
+  background: rgba(9, 14, 26, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.month-kpi-item .kpi-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.month-kpi-item .kpi-val {
+  font-size: 1.25rem;
+  color: #ffffff;
+  display: block;
+}
+
+.month-kpi-item.kpi-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.month-kpi-item.kpi-brand {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.month-kpi-item.kpi-danger {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+}
+
+.month-kpi-item.kpi-success-subtle {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: var(--border-subtle);
+}
+
+.text-success {
+  color: #10b981 !important;
+}
+
+.text-danger {
+  color: #fb7185 !important;
+}
+
+/* Filter Toolbar */
+.filter-toolbar-card {
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.filter-toolbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.filter-chips-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-label-chip {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-search-box {
+  position: relative;
+  min-width: 220px;
+}
+
+.filter-search-box .search-icon {
+  position: absolute;
+  left: 10px;
+  top: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.filter-search-box .search-input {
+  padding: 6px 10px 6px 32px;
+  font-size: 0.84rem;
+}
+
+/* Student card action buttons */
+.student-card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ========================================================= */
+/* COMPREHENSIVE RESPONSIVE MOBILE OVERHAUL (iOS & Android) */
+/* ========================================================= */
 @media (max-width: 768px) {
+  :root {
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+  }
+
+  /* Safe Area for iOS bottom home indicator and floating Safari URL bar */
+  .app-container {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px));
+    min-height: 100dvh;
+  }
+
+  .main-content {
+    padding: 12px 10px calc(80px + env(safe-area-inset-bottom, 20px)) 10px !important;
+  }
+
+  /* Prevent iOS Safari forced auto-zoom on input focus */
+  input, select, textarea, .form-input, .form-select, .form-textarea {
+    font-size: 16px !important;
+  }
+
+  .glass-card {
+    padding: 14px !important;
+    margin-bottom: 14px !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Top Navbar */
+  .navbar {
+    padding: 10px 12px 8px 12px;
+  }
+
   .nav-header-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .nav-actions {
-    width: 100%;
+    flex-direction: row;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
+    width: 100%;
   }
+
+  .brand-section {
+    gap: 8px;
+  }
+
+  .brand-logo-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-text h1 {
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+
+  .brand-subtitle {
+    display: none !important;
+  }
+
+  .nav-actions {
+    gap: 6px;
+  }
+
+  .btn-quick-action {
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap;
+  }
+
+  .btn-text-full {
+    display: none !important;
+  }
+
+  .btn-text-short {
+    display: inline !important;
+  }
+
+  /* Navigation Tabs: smooth horizontal scroll on touch */
+  .nav-tabs-wrapper {
+    margin-top: 8px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .nav-tabs-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-tabs {
+    width: 100%;
+    padding: 3px;
+    gap: 4px;
+  }
+
+  .nav-tab-btn {
+    padding: 6px 11px;
+    font-size: 0.78rem;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .tab-label-full {
+    display: none !important;
+  }
+
+  .tab-label-short {
+    display: inline !important;
+  }
+
+  /* Month Overview Card Mobile */
+  .month-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .month-selector-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .month-title-wrapper {
+    text-align: center;
+  }
+
+  .month-subtitle {
+    font-size: 0.68rem;
+  }
+
+  .month-title-text {
+    font-size: 1.25rem;
+  }
+
+  .btn-month-today {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  /* Month KPIs: clean 2-column grid */
+  .month-kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .month-kpi-item {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+  }
+
+  .month-kpi-item .kpi-label {
+    font-size: 0.68rem;
+  }
+
+  .month-kpi-item .kpi-val {
+    font-size: 1.1rem;
+  }
+
+  .kpi-full-width {
+    grid-column: span 2;
+  }
+
+  /* Filter Toolbar Mobile */
+  .filter-toolbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .filter-chips-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    width: 100%;
+  }
+
+  .filter-chips-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chips-scroll .btn {
+    flex-shrink: 0;
+    padding: 5px 9px;
+    font-size: 0.74rem;
+  }
+
+  .filter-search-box {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Student Card Actions on Mobile */
+  .student-card-actions {
+    flex-direction: row;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .student-card-actions .btn {
+    min-height: 40px;
+    font-size: 0.82rem;
+  }
+
+  /* Stats Grid Mobile (2-column layout) */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .stat-card {
+    padding: 12px 14px !important;
+  }
+
+  .stat-value {
+    font-size: 1.35rem !important;
+  }
+
+  .stat-header span {
+    font-size: 0.75rem;
+  }
+
+  .stat-subtext {
+    font-size: 0.7rem;
+  }
+
+  /* Modals Mobile */
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 88vh !important;
+    padding: 18px 14px !important;
+    border-radius: 20px 20px 12px 12px !important;
+  }
+
+  .modal-header h2 {
+    font-size: 1.15rem;
+  }
+
   .form-grid-2 {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
   }
+
+  /* Rooms Spotlight Grid */
   .rooms-spotlight-grid {
     grid-template-columns: 1fr;
   }
-  .main-content {
-    padding: 16px 12px;
+
+  /* Tables smooth scroll on mobile */
+  div[style*="overflowX: auto"], div[style*="overflow-x: auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: 0.8rem;
   }
 }
+

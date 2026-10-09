@@ -34,63 +34,54 @@ export const Navbar: FC<NavbarProps> = ({
         {/* Brand */}
         <div className="brand-section">
           <div className="brand-logo-icon">
-            <Building2 size={24} />
+            <Building2 size={22} />
           </div>
           <div className="brand-text">
-            <h1>DomusRent</h1>
-            <span>Gestionale Personale • 2 Camere</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1>DomusRent</h1>
+              <button 
+                id="btn-status-supabase"
+                onClick={onOpenSupabaseModal}
+                className="cloud-status-badge"
+                title={isSupabaseConnected ? 'Database Cloud Supabase Connesso' : 'Database Locale'}
+              >
+                <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
+                <span className="status-label">{isSupabaseConnected ? 'Cloud' : 'Locale'}</span>
+              </button>
+            </div>
+            <span className="brand-subtitle">Gestionale Personale • 2 Camere</span>
           </div>
         </div>
 
-        {/* Action Buttons & Status */}
+        {/* Action Buttons */}
         <div className="nav-actions">
-          {/* Supabase status badge */}
-          <button 
-            id="btn-status-supabase"
-            onClick={onOpenSupabaseModal}
-            className="btn btn-sm btn-secondary"
-            style={{ 
-              borderColor: isSupabaseConnected ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)',
-              background: isSupabaseConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-            }}
-            title="Stato Database Cloud Supabase"
-          >
-            <div 
-              style={{ 
-                width: 8, 
-                height: 8, 
-                borderRadius: '50%', 
-                backgroundColor: isSupabaseConnected ? '#10b981' : '#f59e0b' 
-              }} 
-            />
-            <span style={{ fontSize: '0.8rem', color: isSupabaseConnected ? '#34d399' : '#fbbf24' }}>
-              {isSupabaseConnected ? 'Supabase Connesso' : 'Locale'}
-            </span>
-          </button>
-
           {/* Quick Record Payment */}
           <button 
             id="btn-record-payment"
-            className="btn btn-success btn-sm" 
+            className="btn btn-success btn-sm btn-quick-action" 
             onClick={onOpenNewPaymentModal}
+            title="Registra incasso canone affitto"
           >
-            <PlusCircle size={16} />
-            <span>+ Registra Pagamento</span>
+            <PlusCircle size={15} />
+            <span className="btn-text-full">+ Registra Pagamento</span>
+            <span className="btn-text-short">+ Incasso</span>
           </button>
 
           {/* Quick Add Tenant */}
           <button 
             id="btn-add-tenant"
-            className="btn btn-primary btn-sm" 
+            className="btn btn-primary btn-sm btn-quick-action" 
             onClick={onOpenNewTenantModal}
+            title="Aggiungi nuovo studente in stanza"
           >
-            <UserPlus size={16} />
-            <span>+ Aggiungi Ragazzo</span>
+            <UserPlus size={15} />
+            <span className="btn-text-full">+ Aggiungi Ragazzo</span>
+            <span className="btn-text-short">+ Studente</span>
           </button>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs - Horizontally scrollable on mobile */}
       <div className="nav-tabs-wrapper">
         <nav className="nav-tabs">
           <button
@@ -98,8 +89,9 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'payments_status' ? 'active' : ''}`}
             onClick={() => onTabChange('payments_status')}
           >
-            <CreditCard size={18} />
-            <span>Chi ha Pagato? (Mese per Mese)</span>
+            <CreditCard size={17} />
+            <span className="tab-label-full">Chi ha Pagato? (Mese per Mese)</span>
+            <span className="tab-label-short">Pagamenti</span>
           </button>
 
           <button
@@ -107,8 +99,9 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'tenants' ? 'active' : ''}`}
             onClick={() => onTabChange('tenants')}
           >
-            <Users size={18} />
-            <span>I Ragazzi (Anagrafica & Camere)</span>
+            <Users size={17} />
+            <span className="tab-label-full">I Ragazzi (Anagrafica & Camere)</span>
+            <span className="tab-label-short">Studenti</span>
           </button>
 
           <button
@@ -116,8 +109,9 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'archive' ? 'active' : ''}`}
             onClick={() => onTabChange('archive')}
           >
-            <History size={18} />
-            <span>Archivio Pagamenti & Storico Negli Anni</span>
+            <History size={17} />
+            <span className="tab-label-full">Archivio Storico Pagamenti</span>
+            <span className="tab-label-short">Archivio</span>
           </button>
 
           <button
@@ -125,8 +119,9 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
             onClick={() => onTabChange('expenses')}
           >
-            <Receipt size={18} />
-            <span>Bollette & Spese Casa</span>
+            <Receipt size={17} />
+            <span className="tab-label-full">Bollette & Spese Casa</span>
+            <span className="tab-label-short">Bollette/Spese</span>
           </button>
         </nav>
       </div>
