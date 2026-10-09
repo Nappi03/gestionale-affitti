@@ -22,12 +22,48 @@ const LOCAL_STORAGE_TENANTS_KEY = 'domus_landlord_tenants_v3';
 const LOCAL_STORAGE_PAYMENTS_KEY = 'domus_landlord_payments_v3';
 const LOCAL_STORAGE_EXPENSES_KEY = 'domus_landlord_expenses_v3';
 
-// Seed Data (inizializzati vuoti per iniziare da zero)
+// Seed Data
 const SEED_TENANTS: Tenant[] = [];
 const SEED_PAYMENTS: Payment[] = [];
 const SEED_EXPENSES: HouseExpense[] = [];
 
+const isUUID = (str?: string): boolean => {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
 export class StorageService {
+  // Helpers for local storage cache
+  static getLocalTenants(): Tenant[] {
+    const raw = localStorage.getItem(LOCAL_STORAGE_TENANTS_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  static getLocalPayments(): Payment[] {
+    const raw = localStorage.getItem(LOCAL_STORAGE_PAYMENTS_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  static getLocalExpenses(): HouseExpense[] {
+    const raw = localStorage.getItem(LOCAL_STORAGE_EXPENSES_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
   // Test Supabase Connection
   static async testConnection(): Promise<{ success: boolean; message: string }> {
     const supabase = getSupabase();
@@ -48,41 +84,72 @@ export class StorageService {
       try {
         const { data, error } = await supabase.from('bookings').select('*');
         if (!error && data) {
-          return data.map((row: any) => ({
-            id: row.id,
-            name: row.guest_name,
-            phone: row.guest_phone || '',
-            email: row.guest_email || '',
-            room_id: (row.room_id as any) || 'room-1',
-            monthly_rent: Number(row.total_price) || 300,
-            deposit_amount: Number(row.deposit_paid) || 100,
-            start_date: row.check_in,
-            end_date: row.check_out,
-            is_active: row.booking_status === 'confirmed',
-            notes: row.notes || '',
-            created_at: row.created_at,
-          }));
+          if (data.length > 0) {
+            const list: Tenant[] = data.map((row: any) => ({
+              id: row.id,
+              name: row.guest_name,
+              phone: row.guest_phone || '',
+              email: row.guest_email || '',
+              room_id: (row.room_id as any) || 'room-1',
+              monthly_rent: Number(row.total_price) || 300,
+              deposit_amount: Number(row.deposit_paid) || 100,
+              start_date: row.check_in,
+              end_date: row.check_out,
+              is_active: row.booking_status === 'confirmed',
+              notes: row.notes || '',
+              created_at: row.created_at,
+            }));
+            localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(list));
+            return list;
+          }
+
+          // Se Supabase ha 0 righe, controlla se ci sono inquilini salvati in precedenza in localStorage da sincronizzare
+          const localTenants = this.getLocalTenants();
+          if (localTenants.length > 0) {
+            console.log('Migrazione automatica inquilini locali su Supabase...', localTenants.length);
+            const migrated: Tenant[] = [];
+            for (const t of localTenants) {
+              const row = {
+                guest_name: t.name,
+                guest_phone: t.phone || '',
+                guest_email: t.email || '',
+                guest_document: '',
+                room_id: t.room_id,
+                check_in: t.start_date,
+                check_out: t.end_date,
+                guests_count: 1,
+                total_price: t.monthly_rent,
+                deposit_paid: t.deposit_amount,
+                payment_status: 'paid',
+                booking_status: t.is_active ? 'confirmed' : 'checked_out',
+                platform: 'student',
+                notes: t.notes || '',
+              };
+              const { data: insData } = await supabase.from('bookings').insert(row).select().single();
+              if (insData) {
+                migrated.push({ ...t, id: insData.id });
+              }
+            }
+            if (migrated.length > 0) {
+              localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(migrated));
+              return migrated;
+            }
+          }
+
+          return [];
         }
       } catch (e) {
         console.warn('Errore lettura tenant da Supabase:', e);
       }
     }
 
-    const raw = localStorage.getItem(LOCAL_STORAGE_TENANTS_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(SEED_TENANTS));
-      return SEED_TENANTS;
-    }
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return SEED_TENANTS;
-    }
+    const local = this.getLocalTenants();
+    return local.length > 0 ? local : SEED_TENANTS;
   }
 
   static async saveTenant(tenant: Tenant): Promise<Tenant> {
     const supabase = getSupabase();
-    const isLocalSeed = tenant.id.startsWith('tenant-');
+    const isExistingRecord = isUUID(tenant.id);
 
     if (supabase) {
       try {
@@ -103,15 +170,30 @@ export class StorageService {
           notes: tenant.notes || '',
         };
 
-        if (isLocalSeed || !tenant.id) {
+        if (!isExistingRecord) {
           const { data, error } = await supabase.from('bookings').insert(row).select().single();
           if (!error && data) {
-            return { ...tenant, id: data.id };
+            const savedTenant: Tenant = { ...tenant, id: data.id };
+            const list = this.getLocalTenants();
+            const idx = list.findIndex(t => t.id === tenant.id);
+            if (idx >= 0) list[idx] = savedTenant;
+            else list.push(savedTenant);
+            localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(list));
+            return savedTenant;
+          } else {
+            console.error('Errore insert tenant Supabase:', error);
           }
         } else {
           const { data, error } = await supabase.from('bookings').update(row).eq('id', tenant.id).select().single();
           if (!error && data) {
+            const list = this.getLocalTenants();
+            const idx = list.findIndex(t => t.id === tenant.id);
+            if (idx >= 0) list[idx] = tenant;
+            else list.push(tenant);
+            localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(list));
             return tenant;
+          } else {
+            console.error('Errore update tenant Supabase:', error);
           }
         }
       } catch (e) {
@@ -119,12 +201,9 @@ export class StorageService {
       }
     }
 
-    const list = await this.getTenants();
+    const list = this.getLocalTenants();
     let saved: Tenant;
-    if (isLocalSeed && !list.some(t => t.id === tenant.id)) {
-      saved = tenant;
-      list.push(saved);
-    } else if (!tenant.id || isLocalSeed) {
+    if (!tenant.id || !isExistingRecord) {
       saved = { ...tenant, id: `t-${Date.now()}` };
       const idx = list.findIndex(t => t.id === tenant.id);
       if (idx >= 0) list[idx] = saved;
@@ -151,7 +230,7 @@ export class StorageService {
 
   static async deleteTenant(tenantId: string): Promise<boolean> {
     const supabase = getSupabase();
-    if (supabase) {
+    if (supabase && isUUID(tenantId)) {
       try {
         await supabase.from('bookings').delete().eq('id', tenantId);
       } catch (e) {
@@ -159,7 +238,7 @@ export class StorageService {
       }
     }
 
-    const list = await this.getTenants();
+    const list = this.getLocalTenants();
     const filtered = list.filter(t => t.id !== tenantId);
     localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(filtered));
     return true;
@@ -177,48 +256,80 @@ export class StorageService {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          return data.map((row: any) => {
-            let meta: any = {};
-            try {
-              if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
-            } catch { meta = {}; }
+          if (data.length > 0) {
+            const list: Payment[] = data.map((row: any) => {
+              let meta: any = {};
+              try {
+                if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
+              } catch { meta = {}; }
 
-            return {
-              id: row.id,
-              tenant_id: meta.tenant_id || '',
-              tenant_name: meta.tenant_name || row.title.replace('Canone ', ''),
-              room_id: meta.room_id || 'room-1',
-              month_key: meta.month_key || row.date.slice(0, 7),
-              month_label: meta.month_label || row.title,
-              year: Number(meta.year) || new Date(row.date).getFullYear(),
-              amount: Number(row.amount),
-              payment_date: row.date,
-              payment_method: meta.payment_method || 'bonifico',
-              notes: meta.notes || '',
-              created_at: row.created_at,
-            };
-          });
+              return {
+                id: row.id,
+                tenant_id: meta.tenant_id || '',
+                tenant_name: meta.tenant_name || row.title.replace('Canone ', ''),
+                room_id: meta.room_id || 'room-1',
+                month_key: meta.month_key || row.date.slice(0, 7),
+                month_label: meta.month_label || row.title,
+                year: Number(meta.year) || new Date(row.date).getFullYear(),
+                amount: Number(row.amount),
+                payment_date: row.date,
+                payment_method: meta.payment_method || 'bonifico',
+                notes: meta.notes || '',
+                created_at: row.created_at,
+              };
+            });
+            localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(list));
+            return list;
+          }
+
+          // Se Supabase ha 0 pagamenti, sincronizza quelli locali se presenti
+          const localPayments = this.getLocalPayments();
+          if (localPayments.length > 0) {
+            console.log('Migrazione automatica pagamenti locali su Supabase...');
+            const migrated: Payment[] = [];
+            for (const p of localPayments) {
+              const meta = {
+                tenant_id: p.tenant_id,
+                tenant_name: p.tenant_name,
+                room_id: p.room_id,
+                month_key: p.month_key,
+                month_label: p.month_label,
+                year: p.year,
+                payment_method: p.payment_method,
+                notes: p.notes || '',
+              };
+              const row = {
+                category: 'canone_affitto',
+                title: `Canone ${p.month_label} - ${p.tenant_name}`,
+                amount: p.amount,
+                date: p.payment_date,
+                notes: JSON.stringify(meta),
+              };
+              const { data: insData } = await supabase.from('expenses').insert(row).select().single();
+              if (insData) {
+                migrated.push({ ...p, id: insData.id });
+              }
+            }
+            if (migrated.length > 0) {
+              localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(migrated));
+              return migrated;
+            }
+          }
+
+          return [];
         }
       } catch (e) {
         console.warn('Errore fetch pagamenti Supabase:', e);
       }
     }
 
-    const raw = localStorage.getItem(LOCAL_STORAGE_PAYMENTS_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(SEED_PAYMENTS));
-      return SEED_PAYMENTS;
-    }
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return SEED_PAYMENTS;
-    }
+    const local = this.getLocalPayments();
+    return local.length > 0 ? local : SEED_PAYMENTS;
   }
 
   static async recordPayment(payment: Payment): Promise<Payment> {
     const supabase = getSupabase();
-    const isNew = !payment.id || payment.id.startsWith('pay-seed-') || payment.id.startsWith('p-temp-');
+    const isExistingRecord = isUUID(payment.id);
 
     const meta = {
       tenant_id: payment.tenant_id,
@@ -241,13 +352,21 @@ export class StorageService {
           notes: JSON.stringify(meta),
         };
 
-        if (isNew) {
+        if (!isExistingRecord) {
           const { data, error } = await supabase.from('expenses').insert(row).select().single();
           if (!error && data) {
-            return { ...payment, id: data.id };
+            const savedPayment: Payment = { ...payment, id: data.id };
+            const list = this.getLocalPayments();
+            list.unshift(savedPayment);
+            localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(list));
+            return savedPayment;
           }
         } else {
           await supabase.from('expenses').update(row).eq('id', payment.id);
+          const list = this.getLocalPayments();
+          const idx = list.findIndex(p => p.id === payment.id);
+          if (idx >= 0) list[idx] = payment;
+          localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(list));
           return payment;
         }
       } catch (e) {
@@ -255,9 +374,9 @@ export class StorageService {
       }
     }
 
-    const list = await this.getPayments();
+    const list = this.getLocalPayments();
     let saved: Payment;
-    if (isNew) {
+    if (!isExistingRecord) {
       saved = { ...payment, id: `p-${Date.now()}` };
       list.unshift(saved);
     } else {
@@ -272,7 +391,7 @@ export class StorageService {
 
   static async deletePayment(paymentId: string): Promise<boolean> {
     const supabase = getSupabase();
-    if (supabase) {
+    if (supabase && isUUID(paymentId)) {
       try {
         await supabase.from('expenses').delete().eq('id', paymentId);
       } catch (e) {
@@ -280,7 +399,7 @@ export class StorageService {
       }
     }
 
-    const list = await this.getPayments();
+    const list = this.getLocalPayments();
     const filtered = list.filter(p => p.id !== paymentId);
     localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(filtered));
     return true;
@@ -298,7 +417,7 @@ export class StorageService {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          return data.map((row: any) => ({
+          const list: HouseExpense[] = data.map((row: any) => ({
             id: row.id,
             title: row.title,
             category: row.category as any,
@@ -307,27 +426,21 @@ export class StorageService {
             notes: row.notes || '',
             created_at: row.created_at,
           }));
+          localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(list));
+          return list;
         }
       } catch (e) {
         console.warn('Errore fetch spese Supabase:', e);
       }
     }
 
-    const raw = localStorage.getItem(LOCAL_STORAGE_EXPENSES_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(SEED_EXPENSES));
-      return SEED_EXPENSES;
-    }
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return SEED_EXPENSES;
-    }
+    const local = this.getLocalExpenses();
+    return local.length > 0 ? local : SEED_EXPENSES;
   }
 
   static async saveExpense(expense: HouseExpense): Promise<HouseExpense> {
     const supabase = getSupabase();
-    const isNew = !expense.id || expense.id.startsWith('exp-seed-') || expense.id.startsWith('e-');
+    const isExistingRecord = isUUID(expense.id);
 
     if (supabase) {
       try {
@@ -338,11 +451,21 @@ export class StorageService {
           date: expense.date,
           notes: expense.notes || '',
         };
-        if (isNew) {
+        if (!isExistingRecord) {
           const { data, error } = await supabase.from('expenses').insert(row).select().single();
-          if (!error && data) return { ...expense, id: data.id };
+          if (!error && data) {
+            const savedExpense: HouseExpense = { ...expense, id: data.id };
+            const list = this.getLocalExpenses();
+            list.unshift(savedExpense);
+            localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(list));
+            return savedExpense;
+          }
         } else {
           await supabase.from('expenses').update(row).eq('id', expense.id);
+          const list = this.getLocalExpenses();
+          const idx = list.findIndex(e => e.id === expense.id);
+          if (idx >= 0) list[idx] = expense;
+          localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(list));
           return expense;
         }
       } catch (e) {
@@ -350,9 +473,9 @@ export class StorageService {
       }
     }
 
-    const list = await this.getExpenses();
+    const list = this.getLocalExpenses();
     let saved: HouseExpense;
-    if (isNew) {
+    if (!isExistingRecord) {
       saved = { ...expense, id: `e-${Date.now()}` };
       list.unshift(saved);
     } else {
@@ -367,7 +490,7 @@ export class StorageService {
 
   static async deleteExpense(expenseId: string): Promise<boolean> {
     const supabase = getSupabase();
-    if (supabase) {
+    if (supabase && isUUID(expenseId)) {
       try {
         await supabase.from('expenses').delete().eq('id', expenseId);
       } catch (e) {
@@ -375,7 +498,7 @@ export class StorageService {
       }
     }
 
-    const list = await this.getExpenses();
+    const list = this.getLocalExpenses();
     const filtered = list.filter(e => e.id !== expenseId);
     localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(filtered));
     return true;
