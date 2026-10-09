@@ -99,9 +99,9 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'tenants' ? 'active' : ''}`}
             onClick={() => onTabChange('tenants')}
           >
-            <Users size={17} />
+            <Users size={16} />
             <span className="tab-label-full">I Ragazzi (Anagrafica & Camere)</span>
-            <span className="tab-label-short">Studenti</span>
+            <span className="tab-label-short">Ragazzi</span>
           </button>
 
           <button
@@ -109,7 +109,7 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'archive' ? 'active' : ''}`}
             onClick={() => onTabChange('archive')}
           >
-            <History size={17} />
+            <History size={16} />
             <span className="tab-label-full">Archivio Storico Pagamenti</span>
             <span className="tab-label-short">Archivio</span>
           </button>
@@ -119,9 +119,9 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
             onClick={() => onTabChange('expenses')}
           >
-            <Receipt size={17} />
+            <Receipt size={16} />
             <span className="tab-label-full">Bollette & Spese Casa</span>
-            <span className="tab-label-short">Bollette/Spese</span>
+            <span className="tab-label-short">Bollette</span>
           </button>
         </nav>
       </div>
