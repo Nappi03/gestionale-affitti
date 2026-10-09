@@ -105,7 +105,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = t.name.toLowerCase().includes(q);
-      const matchPhone = t.phone.toLowerCase().includes(q);
+      const matchPhone = (t.phone || '').toLowerCase().includes(q);
       const matchNotes = (t.notes || '').toLowerCase().includes(q);
       if (!matchName && !matchPhone && !matchNotes) return false;
     }

@@ -165,7 +165,7 @@ export const TenantModal: FC<TenantModalProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Telefono (per WhatsApp)</label>
+              <label className="form-label">Telefono (opzionale / per WhatsApp)</label>
               <input
                 id="input-tenant-phone"
                 type="tel"
@@ -173,7 +173,6 @@ export const TenantModal: FC<TenantModalProps> = ({
                 placeholder="+39 333 1234567"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                required
               />
             </div>
           </div>

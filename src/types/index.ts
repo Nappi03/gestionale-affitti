@@ -11,7 +11,7 @@ export interface Room {
 export interface Tenant {
   id: string;
   name: string;
-  phone: string;
+  phone?: string;
   email?: string;
   room_id: RoomId;
   monthly_rent: number; // canone individuale al mese a persona (€)
