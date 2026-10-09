@@ -7,6 +7,7 @@ import {
   Tag
 } from 'lucide-react';
 import type { HouseExpense } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 interface ExpensesViewProps {
   expenses: HouseExpense[];
@@ -129,7 +130,7 @@ export const ExpensesView: FC<ExpensesViewProps> = ({
                 {filtered.map(e => (
                   <tr key={e.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                      {e.date}
+                      {formatDate(e.date)}
                     </td>
                     <td style={{ padding: '12px 14px', fontWeight: 600, color: '#ffffff' }}>
                       {e.title}

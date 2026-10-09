@@ -12,6 +12,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import type { Tenant, Room, RoomId } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 interface TenantsManagerProps {
   rooms: Room[];
@@ -258,11 +259,11 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
                         </div>
                         <div>
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Inizio Permanenza</span>
-                          <span>{tenant.start_date}</span>
+                          <span>{formatDate(tenant.start_date)}</span>
                         </div>
                         <div>
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Scadenza Prevista</span>
-                          <span>{tenant.end_date}</span>
+                          <span>{formatDate(tenant.end_date)}</span>
                         </div>
                       </div>
 
@@ -381,7 +382,7 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                      {at.start_date} ➔ {at.end_date}
+                      {formatDate(at.start_date)} ➔ {formatDate(at.end_date)}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       €{at.monthly_rent}/mese

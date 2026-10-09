@@ -10,6 +10,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import type { Payment, Room, Tenant } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 interface PaymentsArchiveViewProps {
   rooms: Room[];
@@ -315,7 +316,7 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
                   >
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                      {p.payment_date}
+                      {formatDate(p.payment_date)}
                     </td>
 
                     <td style={{ padding: '12px 14px', fontWeight: 700, color: '#ffffff' }}>

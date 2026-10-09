@@ -14,6 +14,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import type { Tenant, Payment, Room } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 interface CurrentPaymentsViewProps {
   rooms: Room[];
@@ -435,7 +436,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                           fontSize: '0.8rem'
                         }}>
                           <span style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            ✓ Saldato il {payment.payment_date} ({payment.payment_method})
+                            ✓ Saldato il {formatDate(payment.payment_date)} ({payment.payment_method})
                           </span>
                           <strong style={{ color: '#ffffff' }}>€{payment.amount}</strong>
                         </div>
@@ -572,7 +573,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                                 borderRadius: 4,
                                 display: 'inline-block'
                               }}
-                              title={`Pagato il ${p.payment_date} (€${p.amount})`}
+                              title={`Pagato il ${formatDate(p.payment_date)} (€${p.amount})`}
                             >
                               ✓ Pagato
                             </span>
