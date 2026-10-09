@@ -38,6 +38,15 @@ export interface Payment {
   created_at?: string;
 }
 
+export interface ExpenseSplit {
+  tenant_id: string;
+  tenant_name: string;
+  amount: number; // quota da pagare a testa (€)
+  is_paid: boolean; // se lo studente ha rimborsato/pagato
+  paid_date?: string; // data effettivo incasso quota (YYYY-MM-DD)
+  notes?: string;
+}
+
 export interface HouseExpense {
   id: string;
   title: string;
@@ -45,5 +54,7 @@ export interface HouseExpense {
   amount: number;
   date: string; // YYYY-MM-DD
   notes?: string;
+  splits?: ExpenseSplit[]; // ripartizione sui ragazzi
   created_at?: string;
 }
+

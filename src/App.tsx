@@ -32,6 +32,7 @@ export function App() {
   const [preselectedRoomId, setPreselectedRoomId] = useState<RoomId | undefined>();
 
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseToEdit, setExpenseToEdit] = useState<HouseExpense | null>(null);
 
   // Load all data
   const loadAllData = async () => {
@@ -205,7 +206,16 @@ export function App() {
             {activeTab === 'expenses' && (
               <ExpensesView
                 expenses={expenses}
-                onOpenNewExpenseModal={() => setIsExpenseModalOpen(true)}
+                tenants={tenants}
+                onOpenNewExpenseModal={() => {
+                  setExpenseToEdit(null);
+                  setIsExpenseModalOpen(true);
+                }}
+                onEditExpense={(expense) => {
+                  setExpenseToEdit(expense);
+                  setIsExpenseModalOpen(true);
+                }}
+                onSaveExpense={handleSaveExpense}
                 onDeleteExpense={handleDeleteExpense}
               />
             )}
@@ -243,8 +253,13 @@ export function App() {
       {/* Expense Modal */}
       <ExpenseModal
         isOpen={isExpenseModalOpen}
-        onClose={() => setIsExpenseModalOpen(false)}
+        onClose={() => {
+          setIsExpenseModalOpen(false);
+          setExpenseToEdit(null);
+        }}
         onSave={handleSaveExpense}
+        tenants={tenants}
+        expenseToEdit={expenseToEdit}
       />
     </div>
   );

@@ -417,15 +417,32 @@ export class StorageService {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          const list: HouseExpense[] = data.map((row: any) => ({
-            id: row.id,
-            title: row.title,
-            category: row.category as any,
-            amount: Number(row.amount),
-            date: row.date,
-            notes: row.notes || '',
-            created_at: row.created_at,
-          }));
+          const list: HouseExpense[] = data.map((row: any) => {
+            let noteText = row.notes || '';
+            let splits = undefined;
+            if (typeof noteText === 'string' && noteText.trim().startsWith('{')) {
+              try {
+                const parsed = JSON.parse(noteText);
+                noteText = parsed.text || '';
+                if (Array.isArray(parsed.splits)) {
+                  splits = parsed.splits;
+                }
+              } catch {
+                // fallback a testo puro
+              }
+            }
+
+            return {
+              id: row.id,
+              title: row.title,
+              category: row.category as any,
+              amount: Number(row.amount),
+              date: row.date,
+              notes: noteText,
+              splits: splits,
+              created_at: row.created_at,
+            };
+          });
           localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(list));
           return list;
         }
@@ -442,6 +459,10 @@ export class StorageService {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(expense.id);
 
+    const serializedNotes = (expense.splits && expense.splits.length > 0)
+      ? JSON.stringify({ text: expense.notes || '', splits: expense.splits })
+      : (expense.notes || '');
+
     if (supabase) {
       try {
         const row = {
@@ -449,7 +470,7 @@ export class StorageService {
           title: expense.title,
           amount: expense.amount,
           date: expense.date,
-          notes: expense.notes || '',
+          notes: serializedNotes,
         };
         if (!isExistingRecord) {
           const { data, error } = await supabase.from('expenses').insert(row).select().single();
