@@ -79,7 +79,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
 
           <div>
             <a
-              href="https://wa.me/?text=Buongiorno,%20vorrei%20riattivare%20la%20mia%20licenza%20DomusRent."
+              href="https://wa.me/393669826904?text=Buongiorno,%20vorrei%20riattivare%20la%20mia%20licenza%20DomusRent."
               target="_blank"
               rel="noreferrer"
               className="btn btn-primary"
@@ -199,7 +199,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
 
         {/* Contact WhatsApp */}
         <a
-          href="https://wa.me/?text=Buongiorno,%20vorrei%20informazioni%20su%20DomusRent."
+          href="https://wa.me/393669826904?text=Buongiorno,%20vorrei%20informazioni%20su%20DomusRent."
           target="_blank"
           rel="noreferrer"
           className="btn btn-secondary"

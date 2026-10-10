@@ -9,11 +9,15 @@ import {
   Power, 
   Trash2, 
   Lock, 
-  Calendar,
-  Building,
-  ExternalLink,
-  LogOut,
-  Database
+  Calendar, 
+  Building, 
+  ExternalLink, 
+  LogOut, 
+  Database,
+  Pencil,
+  Phone,
+  MessageCircle,
+  Save
 } from 'lucide-react';
 import { LicenseService } from '../services/licenseService';
 import type { AppLicense } from '../types';
@@ -41,7 +45,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // New license form
+  // New license form state
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newPropertyName, setNewPropertyName] = useState('Appartamento 2 Camere');
@@ -49,6 +53,15 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   const [newExpiresAt, setNewExpiresAt] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Edit license form state
+  const [editingLicense, setEditingLicense] = useState<AppLicense | null>(null);
+  const [editClientName, setEditClientName] = useState('');
+  const [editPropertyName, setEditPropertyName] = useState('');
+  const [editLicenseKey, setEditLicenseKey] = useState('');
+  const [editExpiresAt, setEditExpiresAt] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const MASTER_PIN = '1234';
 
@@ -117,6 +130,41 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
       await loadLicenses();
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleStartEdit = (lic: AppLicense) => {
+    setEditingLicense(lic);
+    setEditClientName(lic.client_name);
+    setEditPropertyName(lic.property_name || 'Appartamento 2 Camere');
+    setEditLicenseKey(lic.license_key);
+    setEditExpiresAt(lic.expires_at || '');
+    setEditPhone(lic.contact_phone || '');
+    setShowCreateForm(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLicense(null);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLicense || !editClientName || !editLicenseKey) return;
+
+    setSavingEdit(true);
+    try {
+      await LicenseService.updateLicense(editingLicense.id, {
+        client_name: editClientName.trim(),
+        property_name: editPropertyName.trim() || 'Appartamento 2 Camere',
+        license_key: editLicenseKey.trim().toUpperCase(),
+        expires_at: editExpiresAt || undefined,
+        contact_phone: editPhone.trim() || undefined,
+      });
+
+      setEditingLicense(null);
+      await loadLicenses();
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -195,7 +243,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
               </span>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, marginTop: 2 }}>
-              Gestione licenze clienti, generazione link diretti e Kill Switch
+              Gestione clienti, link WhatsApp diretti, modifica anagrafica e Kill Switch
             </p>
           </div>
         </div>
@@ -306,7 +354,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
             }}>
               <div className="glass-card" style={{ padding: '14px 16px' }}>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Totale Licenze
+                  Totale Clienti
                 </span>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', marginTop: 4 }}>
                   {licenses.length}
@@ -349,7 +397,10 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={() => setShowCreateForm(!showCreateForm)}
+                onClick={() => {
+                  setEditingLicense(null);
+                  setShowCreateForm(!showCreateForm);
+                }}
               >
                 <Plus size={15} />
                 <span>{showCreateForm ? 'Annulla' : '+ Nuova Licenza Cliente'}</span>
@@ -390,6 +441,17 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                       placeholder="Es: Appartamento Via Roma (2 Camere)"
                       value={newPropertyName}
                       onChange={(e) => setNewPropertyName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Numero WhatsApp / Telefono Cliente</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="Es: 3331234567"
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
                     />
                   </div>
 
@@ -436,6 +498,96 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
               </form>
             )}
 
+            {/* Edit License Form */}
+            {editingLicense && (
+              <form 
+                onSubmit={handleSaveEdit} 
+                className="glass-card" 
+                style={{ padding: 20, marginBottom: 24, border: '1px solid #10b981' }}
+              >
+                <h4 style={{ fontSize: '0.96rem', marginBottom: 14, color: '#34d399', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <Pencil size={17} />
+                  <span>Modifica Dati Cliente: {editingLicense.client_name}</span>
+                </h4>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Nome Proprietario / Cliente *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editClientName}
+                      onChange={(e) => setEditClientName(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Nome Immobile</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editPropertyName}
+                      onChange={(e) => setEditPropertyName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Numero WhatsApp / Telefono Cliente</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="Es: 3331234567"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Chiave Licenza Univoca *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ textTransform: 'uppercase', fontWeight: 600 }}
+                      value={editLicenseKey}
+                      onChange={(e) => setEditLicenseKey(e.target.value.toUpperCase())}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Scadenza Periodo (Opzionale)</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={editExpiresAt}
+                      onChange={(e) => setEditExpiresAt(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleCancelEdit}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={savingEdit}
+                    style={{ background: '#10b981', borderColor: '#10b981' }}
+                  >
+                    <Save size={14} />
+                    <span>{savingEdit ? 'Salvataggio...' : 'Salva Modifiche'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
             {/* License List */}
             {loading ? (
               <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-secondary)' }}>
@@ -458,6 +610,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                 {licenses.map((lic) => {
                   const isCopied = copiedKey === lic.license_key;
                   const clientDirectUrl = `${window.location.origin}/?licenza=${encodeURIComponent(lic.license_key)}`;
+                  const cleanClientPhone = (lic.contact_phone || '').replace(/[^0-9]/g, '');
 
                   return (
                     <div
@@ -490,17 +643,46 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6, flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 6, flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                             <Building size={14} />
                             {lic.property_name || 'Appartamento 2 Camere'}
                           </span>
+
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                             <KeyRound size={14} />
                             <code style={{ background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4 }}>
                               {lic.license_key}
                             </code>
                           </span>
+
+                          {/* Numero WhatsApp Cliente con link diretto */}
+                          {lic.contact_phone ? (
+                            <a
+                              href={`https://wa.me/${cleanClientPhone.startsWith('39') ? cleanClientPhone : `39${cleanClientPhone}`}?text=${encodeURIComponent(
+                                `Buongiorno ${lic.client_name}, ti contatto da DomusRent per informazioni sul tuo gestionale.`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: 4, 
+                                color: '#34d399', 
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                              }}
+                              title="Clicca per aprire la chat WhatsApp con questo cliente"
+                            >
+                              <Phone size={13} />
+                              <span>{lic.contact_phone}</span>
+                            </a>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+                              (Nessun telefono)
+                            </span>
+                          )}
+
                           {lic.expires_at && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                               <Calendar size={14} />
@@ -512,6 +694,23 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
 
                       {/* Actions */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {/* WhatsApp Chat button with client if phone exists */}
+                        {cleanClientPhone && (
+                          <a
+                            href={`https://wa.me/${cleanClientPhone.startsWith('39') ? cleanClientPhone : `39${cleanClientPhone}`}?text=${encodeURIComponent(
+                              `Buongiorno ${lic.client_name}, ti contatto da DomusRent.`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-secondary btn-sm"
+                            title="Apri chat WhatsApp con il cliente"
+                            style={{ fontSize: '0.78rem', gap: 5, color: '#34d399', textDecoration: 'none' }}
+                          >
+                            <MessageCircle size={14} />
+                            <span>Contatta</span>
+                          </a>
+                        )}
+
                         {/* Copy WhatsApp Link Button */}
                         <button
                           type="button"
@@ -521,7 +720,19 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                           style={{ fontSize: '0.78rem', gap: 5 }}
                         >
                           {isCopied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                          <span>{isCopied ? 'Link Copiato!' : 'Copia Link Cliente'}</span>
+                          <span>{isCopied ? 'Link Copiato!' : 'Copia Link'}</span>
+                        </button>
+
+                        {/* Edit Client Button */}
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleStartEdit(lic)}
+                          title="Modifica dati del cliente, immobile o numero di telefono"
+                          style={{ fontSize: '0.78rem', gap: 5 }}
+                        >
+                          <Pencil size={14} />
+                          <span>Modifica</span>
                         </button>
 
                         {/* Open Client View in New Tab */}
@@ -534,7 +745,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                           style={{ fontSize: '0.78rem', gap: 5, textDecoration: 'none' }}
                         >
                           <ExternalLink size={14} />
-                          <span>Apri Gestionale</span>
+                          <span>Apri</span>
                         </a>
 
                         {/* Kill Switch Toggle Button */}
@@ -579,7 +790,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
         padding: '24px 16px',
         color: 'var(--text-primary)',
       }}>
-        <div style={{ maxWidth: 860, margin: '0 auto' }}>
+        <div style={{ maxWidth: 880, margin: '0 auto' }}>
           {content}
         </div>
       </div>
@@ -590,7 +801,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div 
         className="modal-content" 
-        style={{ maxWidth: 760, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} 
+        style={{ maxWidth: 880, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} 
         onClick={(e) => e.stopPropagation()}
       >
         {content}

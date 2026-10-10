@@ -251,6 +251,73 @@ export class LicenseService {
   }
 
   /**
+   * Modifica i dati di una licenza cliente esistente
+   */
+  static async updateLicense(licenseId: string, updates: Partial<Omit<AppLicense, 'id' | 'created_at'>>): Promise<boolean> {
+    const supabase = getSupabase();
+    if (supabase) {
+      // 1. Tabella app_licenses
+      try {
+        const payload: any = {};
+        if (updates.client_name !== undefined) payload.client_name = updates.client_name.trim();
+        if (updates.property_name !== undefined) payload.property_name = updates.property_name.trim();
+        if (updates.contact_phone !== undefined) payload.contact_phone = updates.contact_phone.trim();
+        if (updates.expires_at !== undefined) payload.expires_at = updates.expires_at || null;
+        if (updates.is_active !== undefined) payload.is_active = updates.is_active;
+        if (updates.notes !== undefined) payload.notes = updates.notes;
+        if (updates.license_key !== undefined) payload.license_key = updates.license_key.trim().toUpperCase();
+
+        const { error } = await supabase
+          .from('app_licenses')
+          .update(payload)
+          .eq('id', licenseId);
+        if (!error) {
+          await this.getLicenses();
+          return true;
+        }
+      } catch (e) {
+        console.warn('Errore update app_licenses:', e);
+      }
+
+      // 2. Fallback tabella expenses (category: system_license)
+      try {
+        const { data } = await supabase.from('expenses').select('*').eq('id', licenseId).single();
+        if (data && data.notes) {
+          let meta: any = {};
+          try {
+            meta = JSON.parse(data.notes);
+          } catch {}
+          const updatedMeta = { ...meta, ...updates };
+          if (updates.license_key) updatedMeta.license_key = updates.license_key.trim().toUpperCase();
+
+          await supabase.from('expenses').update({
+            title: updates.client_name || data.title,
+            notes: JSON.stringify(updatedMeta),
+          }).eq('id', licenseId);
+          await this.getLicenses();
+          return true;
+        }
+      } catch (e) {
+        console.warn('Errore update licenza fallback expenses:', e);
+      }
+    }
+
+    // Cache locale
+    const list = await this.getLicenses();
+    const idx = list.findIndex((l) => l.id === licenseId);
+    if (idx >= 0) {
+      list[idx] = {
+        ...list[idx],
+        ...updates,
+        ...(updates.license_key ? { license_key: updates.license_key.trim().toUpperCase() } : {}),
+      };
+      localStorage.setItem(LOCAL_LICENSES_CACHE_KEY, JSON.stringify(list));
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Elimina una licenza
    */
   static async deleteLicense(licenseId: string): Promise<boolean> {
