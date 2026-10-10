@@ -3,13 +3,12 @@ import {
   Building2, 
   KeyRound, 
   ArrowRight, 
-  ShieldCheck, 
   ShieldAlert, 
-  Sparkles, 
   Receipt, 
   CheckCircle2, 
   MessageCircle,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck
 } from 'lucide-react';
 import { useLicense } from '../context/LicenseContext';
 
@@ -20,12 +19,9 @@ interface LicenseScreenProps {
 export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
   const { 
     license, 
-    licenseKey, 
     status, 
     errorMessage, 
-    loginWithKey, 
-    logout, 
-    enableGuestMode 
+    loginWithKey
   } = useLicense();
 
   const [inputKey, setInputKey] = useState('');
@@ -69,12 +65,12 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
         <div style={{
           width: '100%',
           maxWidth: 460,
-          background: 'rgba(17, 24, 39, 0.9)',
+          background: 'rgba(17, 24, 39, 0.92)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(239, 68, 68, 0.4)',
           borderRadius: 'var(--radius-xl)',
           padding: '36px 24px',
-          boxShadow: '0 25px 60px rgba(239, 68, 68, 0.2)',
+          boxShadow: '0 25px 60px rgba(239, 68, 68, 0.25)',
           textAlign: 'center',
         }}>
           <div style={{
@@ -93,7 +89,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
           </div>
 
           <h2 style={{ fontSize: '1.45rem', color: '#ffffff', fontWeight: 800, marginBottom: 8 }}>
-            {status === 'suspended' ? 'Licenza Temporaneamente Sospesa' : 'Licenza Scaduta'}
+            {status === 'suspended' ? 'Accesso al Gestionale Sospeso' : 'Licenza Scaduta'}
           </h2>
 
           <div style={{
@@ -106,44 +102,33 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
             color: '#fca5a5',
             lineHeight: 1.5,
           }}>
-            Gentile <strong>{license?.client_name || 'Proprietario'}</strong>, l'accesso al gestionale per l'immobile <strong>{license?.property_name || 'assegnato'}</strong> (chiave: <code>{licenseKey}</code>) risulta momentaneamente bloccato per mancato rinnovo o termine del periodo attivo.
+            L'accesso al gestionale per l'immobile <strong>{license?.property_name || 'assegnato'}</strong> risulta momentaneamente bloccato per mancato rinnovo del servizio.
           </div>
 
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
             I tuoi dati, inquilini e pagamenti rimangono custoditi al sicuro nel database e saranno nuovamente accessibili non appena la licenza verrà riattivata dall'amministratore.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div>
             {/* Pulsante Contatto WhatsApp / Supporto */}
             <a
-              href="https://wa.me/?text=Buongiorno,%20vorrei%20riattivare%20la%20mia%20licenza%20DomusRent."
+              href="https://wa.me/?text=Buongiorno,%20vorrei%20rinnovare%20la%20mia%20licenza%20DomusRent."
               target="_blank"
               rel="noreferrer"
               className="btn btn-primary"
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '13px',
                 justifyContent: 'center',
                 background: '#10b981',
                 borderColor: '#10b981',
-                fontSize: '0.9rem',
+                fontSize: '0.92rem',
                 gap: 8,
               }}
             >
               <MessageCircle size={18} />
               <span>Contatta l'Amministratore per Riattivare</span>
             </a>
-
-            {/* Pulsante cambia chiave / logout */}
-            <button
-              type="button"
-              onClick={logout}
-              className="btn btn-secondary"
-              style={{ width: '100%', padding: '10px', justifyContent: 'center', fontSize: '0.84rem' }}
-            >
-              <KeyRound size={15} />
-              <span>Inserisci un'altra chiave licenza</span>
-            </button>
           </div>
         </div>
       </div>
@@ -172,18 +157,23 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
       }}>
         {/* Brand */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{
-            width: 52,
-            height: 52,
-            borderRadius: 'var(--radius-md)',
-            background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
-            marginBottom: 12,
-          }}>
+          <div 
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
+              marginBottom: 12,
+              cursor: 'pointer',
+            }}
+            onDoubleClick={onOpenAdminModal}
+            title="DomusRent"
+          >
             <Building2 size={28} />
           </div>
 
@@ -191,7 +181,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
             DomusRent
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 4 }}>
-            Accesso Riservato Proprietari Imobiliari
+            Accesso Riservato Proprietari Immobiliari
           </p>
         </div>
 
@@ -224,7 +214,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
                 type="text"
                 className="form-input"
                 style={{ paddingLeft: 38, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}
-                placeholder="ES: DOMUS-ROSSI-2026"
+                placeholder="ES: DOMUS-CLIENTE"
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
                 required
@@ -232,7 +222,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
               />
             </div>
             <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 5, display: 'block' }}>
-              Hai già un link personalizzato? Aprilo direttamente per accedere senza inserire la chiave.
+              Usa il link personalizzato ricevuto per accedere direttamente.
             </span>
           </div>
 
@@ -269,7 +259,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <CheckCircle2 size={14} color="#10b981" />
-            <span>Nessuna registrazione o password da memorizzare</span>
+            <span>Nessuna registrazione o password da ricordare</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <Receipt size={14} color="#818cf8" />
@@ -277,51 +267,9 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <ShieldCheck size={14} color="#38bdf8" />
-            <span>Dati salvati in cloud privati con isolamento licenza</span>
+            <span>Dati salvati in cloud privati con crittografia</span>
           </div>
         </div>
-
-        {/* Demo Button */}
-        <div style={{ textAlign: 'center', marginTop: 18 }}>
-          <button
-            type="button"
-            onClick={enableGuestMode}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              fontSize: '0.76rem',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <Sparkles size={13} color="#f59e0b" />
-            <span>Oppure esplora subito in Modalità Demo Locale</span>
-          </button>
-        </div>
-
-        {/* Admin Link at the very bottom */}
-        {onOpenAdminModal && (
-          <div style={{ textAlign: 'center', marginTop: 14 }}>
-            <button
-              type="button"
-              onClick={onOpenAdminModal}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted)',
-                fontSize: '0.7rem',
-                cursor: 'pointer',
-                opacity: 0.65,
-              }}
-            >
-              🔒 Sei l'amministratore? Gestisci o crea licenze
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -71,8 +71,8 @@ export class StorageService {
     const key = getCurrentLicenseKey();
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     let raw = localStorage.getItem(scopedKey);
-    // Solo per DOMUS-FRANCESCO-NAPPI o se non c'è licenza recupera la cache legacy iniziale
-    if (!raw && (key === 'DOMUS-FRANCESCO-NAPPI' || !key)) {
+    // Solo per DOMUS-FRANCESCO-NAPPI recupera la cache legacy iniziale se non ancora migrata
+    if (!raw && key === 'DOMUS-FRANCESCO-NAPPI') {
       raw = localStorage.getItem(LOCAL_STORAGE_TENANTS_KEY);
     }
     if (!raw) return [];
@@ -92,7 +92,7 @@ export class StorageService {
     const key = getCurrentLicenseKey();
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     let raw = localStorage.getItem(scopedKey);
-    if (!raw && (key === 'DOMUS-FRANCESCO-NAPPI' || !key)) {
+    if (!raw && key === 'DOMUS-FRANCESCO-NAPPI') {
       raw = localStorage.getItem(LOCAL_STORAGE_PAYMENTS_KEY);
     }
     if (!raw) return [];
@@ -112,7 +112,7 @@ export class StorageService {
     const key = getCurrentLicenseKey();
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     let raw = localStorage.getItem(scopedKey);
-    if (!raw && (key === 'DOMUS-FRANCESCO-NAPPI' || !key)) {
+    if (!raw && key === 'DOMUS-FRANCESCO-NAPPI') {
       raw = localStorage.getItem(LOCAL_STORAGE_EXPENSES_KEY);
     }
     if (!raw) return [];
@@ -195,7 +195,7 @@ export class StorageService {
   static async saveTenant(tenant: Tenant): Promise<Tenant> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(tenant.id);
-    const currentKey = (getCurrentLicenseKey() || 'DOMUS-FRANCESCO-NAPPI').trim().toUpperCase();
+    const currentKey = (getCurrentLicenseKey() || 'DOMUS-DEFAULT').trim().toUpperCase();
 
     if (supabase) {
       try {
@@ -358,7 +358,7 @@ export class StorageService {
   static async recordPayment(payment: Payment): Promise<Payment> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(payment.id);
-    const currentKey = (getCurrentLicenseKey() || 'DOMUS-FRANCESCO-NAPPI').trim().toUpperCase();
+    const currentKey = (getCurrentLicenseKey() || 'DOMUS-DEFAULT').trim().toUpperCase();
 
     const meta = {
       tenant_id: payment.tenant_id,
@@ -509,7 +509,7 @@ export class StorageService {
   static async saveExpense(expense: HouseExpense): Promise<HouseExpense> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(expense.id);
-    const currentKey = (getCurrentLicenseKey() || 'DOMUS-FRANCESCO-NAPPI').trim().toUpperCase();
+    const currentKey = (getCurrentLicenseKey() || 'DOMUS-DEFAULT').trim().toUpperCase();
 
     const metaObj = {
       text: expense.notes || '',

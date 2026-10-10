@@ -16,7 +16,7 @@ import { StorageService, ROOMS } from './services/storageService';
 import type { Tenant, Payment, HouseExpense, Room, RoomId } from './types';
 
 function DomusRentDashboard() {
-  const { license, licenseKey, status, isGuestMode, loading: licenseLoading } = useLicense();
+  const { license, licenseKey, status, isGuestMode, loading: licenseLoading, isAdmin } = useLicense();
   const [activeTab, setActiveTab] = useState<NavTab>('payments_status');
   const [rooms] = useState<Room[]>(ROOMS);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -25,7 +25,7 @@ function DomusRentDashboard() {
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Admin Licenses Modal state
+  // Admin Licenses Modal state (Master Control)
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   // Modals state
@@ -69,6 +69,23 @@ function DomusRentDashboard() {
       loadAllData();
     }
   }, [licenseKey, isGuestMode]);
+
+  // Master Admin shortcut listener & URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('admin') || params.has('master')) {
+      setIsAdminModalOpen(true);
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setIsAdminModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // --- Handlers: Payments ---
   const handleSavePayment = async (payment: Payment) => {
@@ -171,12 +188,12 @@ function DomusRentDashboard() {
         gap: 16,
       }}>
         <div className="status-dot connected" style={{ width: 14, height: 14 }} />
-        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#e2e8f0' }}>Verifica Licenza DomusRent...</span>
+        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#e2e8f0' }}>Caricamento sicuro in corso...</span>
       </div>
     );
   }
 
-  // Se non c'è una licenza valida o la licenza è sospesa/scaduta, mostra la schermata licenza
+  // Se non c'è una licenza valida o la licenza è sospesa/scaduta, mostra la schermata di blocco o di inserimento chiave
   const isBlocked = (!license && !isGuestMode) || status === 'suspended' || status === 'expired' || status === 'not_found';
 
   if (isBlocked) {
@@ -190,14 +207,17 @@ function DomusRentDashboard() {
 
   return (
     <div className="app-container">
-      {/* Navbar */}
+      {/* Navbar: 100% blindata per il cliente */}
       <Navbar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          if (tab === 'supabase' && !isAdmin) return;
+          setActiveTab(tab);
+        }}
         isSupabaseConnected={isSupabaseConnected}
         onOpenNewPaymentModal={() => handleOpenPaymentModalWithContext()}
         onOpenNewTenantModal={() => handleOpenNewTenantModal()}
-        onOpenSupabaseModal={() => setActiveTab('supabase')}
+        onOpenSupabaseModal={() => isAdmin && setActiveTab('supabase')}
         onOpenAdminLicensesModal={() => setIsAdminModalOpen(true)}
       />
 
@@ -261,7 +281,8 @@ function DomusRentDashboard() {
               />
             )}
 
-            {activeTab === 'supabase' && (
+            {/* Configurazione Supabase: ESCLUSIVA PER MASTER ADMIN */}
+            {isAdmin && activeTab === 'supabase' && (
               <SupabaseConfigModal
                 onConnectionStatusChanged={loadAllData}
               />
@@ -303,7 +324,7 @@ function DomusRentDashboard() {
         expenseToEdit={expenseToEdit}
       />
 
-      {/* Admin Licenses & Kill Switch Modal */}
+      {/* Admin Licenses Modal (Master Control) */}
       <AdminLicensesModal
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}

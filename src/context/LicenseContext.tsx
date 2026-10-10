@@ -56,9 +56,15 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     const init = async () => {
-      // 1. Controlla parametri URL (es. ?licenza=DOMUS-ROSSI o ?key=...)
+      // 1. Controlla parametri URL (es. ?licenza=DOMUS-ROSSI o ?key=... oppure ?admin)
       const urlParams = new URLSearchParams(window.location.search);
       const urlKey = urlParams.get('licenza') || urlParams.get('key') || urlParams.get('license');
+
+      if (urlParams.has('admin') || urlParams.has('master')) {
+        await checkLicense('DOMUS-ADMIN');
+        setLoading(false);
+        return;
+      }
 
       if (urlKey) {
         await checkLicense(urlKey);

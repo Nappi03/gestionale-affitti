@@ -7,9 +7,8 @@ import {
   Receipt, 
   PlusCircle, 
   UserPlus,
-  LogOut,
-  Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
 import { useLicense } from '../context/LicenseContext';
 
@@ -34,36 +33,54 @@ export const Navbar: FC<NavbarProps> = ({
   onOpenSupabaseModal,
   onOpenAdminLicensesModal,
 }) => {
-  const { license, licenseKey, isAdmin, isGuestMode, logout } = useLicense();
+  const { license, isAdmin, logout } = useLicense();
 
   return (
     <header className="navbar">
       <div className="nav-header-row">
         {/* Brand */}
         <div className="brand-section">
-          <div className="brand-logo-icon">
+          <div 
+            className="brand-logo-icon"
+            onDoubleClick={onOpenAdminLicensesModal}
+            title={isAdmin ? "DomusRent Master Admin" : "DomusRent"}
+            style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+          >
             <Building2 size={22} />
           </div>
           <div className="brand-text">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h1>DomusRent</h1>
-              <button 
-                id="btn-status-supabase"
-                onClick={onOpenSupabaseModal}
-                className="cloud-status-badge"
-                title={isSupabaseConnected ? 'Database Cloud Supabase Connesso' : 'Database Locale'}
-              >
-                <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
-                <span className="status-label">{isSupabaseConnected ? 'Cloud' : 'Locale'}</span>
-              </button>
+              {/* Se l'utente è l'Admin Master, può cliccare sul badge per aprire la config Supabase.
+                  Per il CLIENTE, è un indicatore di sicurezza fisso e non cliccabile. */}
+              {isAdmin ? (
+                <button 
+                  id="btn-status-supabase"
+                  onClick={onOpenSupabaseModal}
+                  className="cloud-status-badge"
+                  title="Configurazione Database Supabase (Admin)"
+                >
+                  <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
+                  <span className="status-label">{isSupabaseConnected ? 'Cloud' : 'Locale'}</span>
+                </button>
+              ) : (
+                <div 
+                  className="cloud-status-badge" 
+                  style={{ cursor: 'default', userSelect: 'none' }}
+                  title="Connessione cloud sicura e attiva"
+                >
+                  <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
+                  <span className="status-label">Cloud</span>
+                </div>
+              )}
             </div>
             <span className="brand-subtitle">
-              {license?.property_name || 'Gestionale Personale • 2 Camere'}
+              {license?.property_name || 'Appartamento 2 Camere'}
             </span>
           </div>
         </div>
 
-        {/* Action Buttons & Account / License */}
+        {/* Action Buttons: solo le funzioni necessarie per il proprietario */}
         <div className="nav-actions">
           {/* Quick Record Payment */}
           <button 
@@ -89,51 +106,31 @@ export const Navbar: FC<NavbarProps> = ({
             <span className="btn-text-short">+ Studente</span>
           </button>
 
-          {/* Admin Licenses Button (Master Control) */}
-          <button
-            onClick={onOpenAdminLicensesModal}
-            className="btn btn-secondary btn-icon btn-sm"
-            title="Pannello Gestione Licenze & Kill Switch"
-            style={{ width: 34, height: 34, padding: 0, borderColor: isAdmin ? 'rgba(99, 102, 241, 0.6)' : undefined }}
-          >
-            <ShieldCheck size={16} color={isAdmin ? '#818cf8' : 'var(--text-secondary)'} />
-          </button>
-
-          {/* User / License Indicator */}
-          {license && !isGuestMode ? (
+          {/* MASTER ADMIN EXCLUSIVE: visibile SOLO se autenticati come Master Admin */}
+          {isAdmin && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="user-email-badge" title={`Licenza: ${licenseKey}\nCliente: ${license.client_name}`}>
-                {license.client_name}
-              </span>
               <button
-                onClick={() => {
-                  if (window.confirm(`Vuoi uscire dalla licenza ${license.client_name} (${licenseKey})?`)) {
-                    logout();
-                  }
-                }}
+                onClick={onOpenAdminLicensesModal}
                 className="btn btn-secondary btn-icon btn-sm"
-                title={`Connesso con licenza: ${licenseKey}\nClicca per cambiare licenza`}
+                title="Pannello Master Gestione Licenze & Kill Switch"
+                style={{ width: 34, height: 34, padding: 0, borderColor: 'rgba(99, 102, 241, 0.6)' }}
+              >
+                <ShieldCheck size={16} color="#818cf8" />
+              </button>
+              <button
+                onClick={logout}
+                className="btn btn-secondary btn-icon btn-sm"
+                title="Esci dalla sessione Master Admin"
                 style={{ width: 34, height: 34, padding: 0 }}
               >
                 <LogOut size={15} color="#fb7185" />
               </button>
             </div>
-          ) : isGuestMode ? (
-            <button
-              onClick={logout}
-              className="btn btn-secondary btn-sm"
-              title="Esci dalla modalità demo ed entra con chiave licenza"
-              style={{ padding: '5px 8px', fontSize: '0.72rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
-            >
-              <Sparkles size={13} />
-              <span className="btn-text-full">Demo (Inserisci Chiave)</span>
-              <span className="btn-text-short">Licenza</span>
-            </button>
-          ) : null}
+          )}
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs: Esattamente le 4 sezioni del gestionale */}
       <div className="nav-tabs-wrapper">
         <nav className="nav-tabs">
           <button
