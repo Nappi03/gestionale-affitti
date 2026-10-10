@@ -32,6 +32,11 @@ export function getCurrentLicenseKey(): string | null {
   if (lic) return lic.trim().toUpperCase();
   const authId = localStorage.getItem('domus_current_auth_user_id');
   if (authId) return authId.trim().toUpperCase();
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const urlLic = params.get('licenza') || params.get('key') || params.get('license');
+    if (urlLic) return urlLic.trim().toUpperCase();
+  }
   return null;
 }
 
@@ -43,24 +48,44 @@ function getScopedKey(baseKey: string): string {
   return `${baseKey}_demo`;
 }
 
-async function safeInsert(table: string, row: any): Promise<{ data: any; error: any }> {
+function cleanRowForSupabase(row: any): any {
+  const clean = { ...row };
+  // La colonna user_id in Supabase è di tipo UUID.
+  // Se non è un UUID valido (es. stringa licenza 'DOMUS-FRANCESCO-NAPPI'), rimuovila per evitare errore 22P02!
+  if (clean.user_id !== undefined && !isUUID(clean.user_id)) {
+    delete clean.user_id;
+  }
+  return clean;
+}
+
+async function safeInsert(table: string, rawRow: any): Promise<{ data: any; error: any }> {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Supabase non disponibile') };
+  const row = cleanRowForSupabase(rawRow);
   let { data, error } = await supabase.from(table).insert(row).select().single();
-  if (error && error.message && error.message.includes('user_id')) {
-    const { user_id, ...fallbackRow } = row;
-    return await supabase.from(table).insert(fallbackRow).select().single();
+  if (error) {
+    console.warn(`safeInsert su ${table} fallito:`, error);
+    if (row.user_id) {
+      const { user_id, ...fallbackRow } = row;
+      const retry = await supabase.from(table).insert(fallbackRow).select().single();
+      if (!retry.error) return retry;
+    }
   }
   return { data, error };
 }
 
-async function safeUpdate(table: string, id: string, row: any): Promise<{ data: any; error: any }> {
+async function safeUpdate(table: string, id: string, rawRow: any): Promise<{ data: any; error: any }> {
   const supabase = getSupabase();
   if (!supabase) return { data: null, error: new Error('Supabase non disponibile') };
+  const row = cleanRowForSupabase(rawRow);
   let { data, error } = await supabase.from(table).update(row).eq('id', id).select().single();
-  if (error && error.message && error.message.includes('user_id')) {
-    const { user_id, ...fallbackRow } = row;
-    return await supabase.from(table).update(fallbackRow).eq('id', id).select().single();
+  if (error) {
+    console.warn(`safeUpdate su ${table} fallito:`, error);
+    if (row.user_id) {
+      const { user_id, ...fallbackRow } = row;
+      const retry = await supabase.from(table).update(fallbackRow).eq('id', id).select().single();
+      if (!retry.error) return retry;
+    }
   }
   return { data, error };
 }
@@ -214,7 +239,7 @@ export class StorageService {
           booking_status: tenant.is_active ? 'confirmed' : 'checked_out',
           platform: currentKey,
           notes: tenant.notes || '',
-          user_id: currentKey,
+          ...(isUUID(currentKey) ? { user_id: currentKey } : {}),
         };
 
         if (!isExistingRecord) {
@@ -380,7 +405,7 @@ export class StorageService {
           amount: payment.amount,
           date: payment.payment_date,
           notes: JSON.stringify(meta),
-          user_id: currentKey,
+          ...(isUUID(currentKey) ? { user_id: currentKey } : {}),
         };
 
         if (!isExistingRecord) {
@@ -526,7 +551,7 @@ export class StorageService {
           amount: expense.amount,
           date: expense.date,
           notes: serializedNotes,
-          user_id: currentKey,
+          ...(isUUID(currentKey) ? { user_id: currentKey } : {}),
         };
 
         if (!isExistingRecord) {
