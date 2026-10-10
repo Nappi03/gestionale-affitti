@@ -8,9 +8,10 @@ import {
   PlusCircle, 
   UserPlus,
   LogOut,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useLicense } from '../context/LicenseContext';
 
 export type NavTab = 'payments_status' | 'tenants' | 'archive' | 'expenses' | 'supabase';
 
@@ -21,6 +22,7 @@ interface NavbarProps {
   onOpenNewPaymentModal: () => void;
   onOpenNewTenantModal: () => void;
   onOpenSupabaseModal: () => void;
+  onOpenAdminLicensesModal: () => void;
 }
 
 export const Navbar: FC<NavbarProps> = ({
@@ -30,8 +32,9 @@ export const Navbar: FC<NavbarProps> = ({
   onOpenNewPaymentModal,
   onOpenNewTenantModal,
   onOpenSupabaseModal,
+  onOpenAdminLicensesModal,
 }) => {
-  const { user, signOut, isGuestMode, exitGuestMode } = useAuth();
+  const { license, licenseKey, isAdmin, isGuestMode, logout } = useLicense();
 
   return (
     <header className="navbar">
@@ -54,11 +57,13 @@ export const Navbar: FC<NavbarProps> = ({
                 <span className="status-label">{isSupabaseConnected ? 'Cloud' : 'Locale'}</span>
               </button>
             </div>
-            <span className="brand-subtitle">Gestionale Personale • 2 Camere</span>
+            <span className="brand-subtitle">
+              {license?.property_name || 'Gestionale Personale • 2 Camere'}
+            </span>
           </div>
         </div>
 
-        {/* Action Buttons & Account */}
+        {/* Action Buttons & Account / License */}
         <div className="nav-actions">
           {/* Quick Record Payment */}
           <button 
@@ -84,20 +89,30 @@ export const Navbar: FC<NavbarProps> = ({
             <span className="btn-text-short">+ Studente</span>
           </button>
 
-          {/* User Account / Logout / Demo indicator */}
-          {user ? (
+          {/* Admin Licenses Button (Master Control) */}
+          <button
+            onClick={onOpenAdminLicensesModal}
+            className="btn btn-secondary btn-icon btn-sm"
+            title="Pannello Gestione Licenze & Kill Switch"
+            style={{ width: 34, height: 34, padding: 0, borderColor: isAdmin ? 'rgba(99, 102, 241, 0.6)' : undefined }}
+          >
+            <ShieldCheck size={16} color={isAdmin ? '#818cf8' : 'var(--text-secondary)'} />
+          </button>
+
+          {/* User / License Indicator */}
+          {license && !isGuestMode ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="user-email-badge" title={user.email || ''}>
-                {user.email}
+              <span className="user-email-badge" title={`Licenza: ${licenseKey}\nCliente: ${license.client_name}`}>
+                {license.client_name}
               </span>
               <button
                 onClick={() => {
-                  if (window.confirm(`Vuoi uscire dall'account ${user.email}?`)) {
-                    signOut();
+                  if (window.confirm(`Vuoi uscire dalla licenza ${license.client_name} (${licenseKey})?`)) {
+                    logout();
                   }
                 }}
                 className="btn btn-secondary btn-icon btn-sm"
-                title={`Connesso come: ${user.email}\nClicca per uscire`}
+                title={`Connesso con licenza: ${licenseKey}\nClicca per cambiare licenza`}
                 style={{ width: 34, height: 34, padding: 0 }}
               >
                 <LogOut size={15} color="#fb7185" />
@@ -105,14 +120,14 @@ export const Navbar: FC<NavbarProps> = ({
             </div>
           ) : isGuestMode ? (
             <button
-              onClick={exitGuestMode}
+              onClick={logout}
               className="btn btn-secondary btn-sm"
-              title="Esci dalla modalità demo e accedi con account"
+              title="Esci dalla modalità demo ed entra con chiave licenza"
               style={{ padding: '5px 8px', fontSize: '0.72rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
             >
               <Sparkles size={13} />
-              <span className="btn-text-full">Demo (Accedi)</span>
-              <span className="btn-text-short">Accedi</span>
+              <span className="btn-text-full">Demo (Inserisci Chiave)</span>
+              <span className="btn-text-short">Licenza</span>
             </button>
           ) : null}
         </div>

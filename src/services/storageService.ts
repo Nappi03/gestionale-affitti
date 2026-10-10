@@ -32,16 +32,16 @@ const isUUID = (str?: string): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 };
 
-export function getCurrentAuthUserId(): string | null {
-  return localStorage.getItem('domus_current_auth_user_id') || null;
+export function getCurrentLicenseKey(): string | null {
+  return localStorage.getItem('domus_active_license_key') || localStorage.getItem('domus_current_auth_user_id') || null;
 }
 
 function getScopedKey(baseKey: string): string {
-  const userId = getCurrentAuthUserId();
-  if (userId) {
-    return `${baseKey}_${userId}`;
+  const licenseKey = getCurrentLicenseKey();
+  if (licenseKey) {
+    return `${baseKey}_${licenseKey}`;
   }
-  return `${baseKey}_guest`;
+  return `${baseKey}_demo`;
 }
 
 async function safeInsert(table: string, row: any): Promise<{ data: any; error: any }> {
@@ -72,7 +72,7 @@ export class StorageService {
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     let raw = localStorage.getItem(scopedKey);
     // Backward compatibility fallback
-    if (!raw && getCurrentAuthUserId()) {
+    if (!raw && getCurrentLicenseKey()) {
       raw = localStorage.getItem(LOCAL_STORAGE_TENANTS_KEY);
     }
     if (!raw) return [];
@@ -86,7 +86,7 @@ export class StorageService {
   static setLocalTenants(data: Tenant[]): void {
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
-    if (!getCurrentAuthUserId()) {
+    if (!getCurrentLicenseKey()) {
       localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(data));
     }
   }
@@ -94,7 +94,7 @@ export class StorageService {
   static getLocalPayments(): Payment[] {
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     let raw = localStorage.getItem(scopedKey);
-    if (!raw && getCurrentAuthUserId()) {
+    if (!raw && getCurrentLicenseKey()) {
       raw = localStorage.getItem(LOCAL_STORAGE_PAYMENTS_KEY);
     }
     if (!raw) return [];
@@ -108,7 +108,7 @@ export class StorageService {
   static setLocalPayments(data: Payment[]): void {
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
-    if (!getCurrentAuthUserId()) {
+    if (!getCurrentLicenseKey()) {
       localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(data));
     }
   }
@@ -116,7 +116,7 @@ export class StorageService {
   static getLocalExpenses(): HouseExpense[] {
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     let raw = localStorage.getItem(scopedKey);
-    if (!raw && getCurrentAuthUserId()) {
+    if (!raw && getCurrentLicenseKey()) {
       raw = localStorage.getItem(LOCAL_STORAGE_EXPENSES_KEY);
     }
     if (!raw) return [];
@@ -130,7 +130,7 @@ export class StorageService {
   static setLocalExpenses(data: HouseExpense[]): void {
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
-    if (!getCurrentAuthUserId()) {
+    if (!getCurrentLicenseKey()) {
       localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(data));
     }
   }
@@ -151,16 +151,24 @@ export class StorageService {
   // --- TENANTS (I Ragazzi) ---
   static async getTenants(): Promise<Tenant[]> {
     const supabase = getSupabase();
-    const currentUserId = getCurrentAuthUserId();
+    const currentKey = getCurrentLicenseKey();
 
     if (supabase) {
       try {
         const { data, error } = await supabase.from('bookings').select('*');
         if (!error && data) {
-          // Filtro multi-tenant
-          const userRows = currentUserId
-            ? data.filter((row: any) => !row.user_id || row.user_id === currentUserId)
-            : data.filter((row: any) => !row.user_id);
+          // Filtro multi-tenant basato su licenza
+          const userRows = currentKey
+            ? data.filter((row: any) => {
+                if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
+                if (row.platform && row.platform === currentKey) return true;
+                if (row.user_id && row.user_id === currentKey) return true;
+                if (row.notes && row.notes.includes(currentKey)) return true;
+                // fallback per record iniziali esistenti
+                if (!row.platform || row.platform === 'student' || row.platform === 'direct') return true;
+                return false;
+              })
+            : data;
 
           if (userRows.length > 0) {
             const list: Tenant[] = userRows.map((row: any) => ({
@@ -181,10 +189,10 @@ export class StorageService {
             return list;
           }
 
-          // Se Supabase non ha ancora righe per questo utente, controlla cache locale
+          // Se Supabase non ha ancora righe per questa licenza, controlla cache locale
           const localTenants = this.getLocalTenants();
-          if (localTenants.length > 0 && currentUserId) {
-            console.log('Migrazione automatica inquilini locali su account Supabase...', localTenants.length);
+          if (localTenants.length > 0 && currentKey) {
+            console.log('Migrazione automatica inquilini locali su licenza...', localTenants.length);
             const migrated: Tenant[] = [];
             for (const t of localTenants) {
               const row: any = {
@@ -200,9 +208,9 @@ export class StorageService {
                 deposit_paid: t.deposit_amount,
                 payment_status: 'paid',
                 booking_status: t.is_active ? 'confirmed' : 'checked_out',
-                platform: 'student',
+                platform: currentKey,
                 notes: t.notes || '',
-                user_id: currentUserId,
+                user_id: currentKey,
               };
               const { data: insData } = await safeInsert('bookings', row);
               if (insData) {
@@ -229,7 +237,7 @@ export class StorageService {
   static async saveTenant(tenant: Tenant): Promise<Tenant> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(tenant.id);
-    const currentUserId = getCurrentAuthUserId();
+    const currentKey = getCurrentLicenseKey();
 
     if (supabase) {
       try {
@@ -246,11 +254,11 @@ export class StorageService {
           deposit_paid: tenant.deposit_amount,
           payment_status: 'paid',
           booking_status: tenant.is_active ? 'confirmed' : 'checked_out',
-          platform: 'student',
+          platform: currentKey || 'student',
           notes: tenant.notes || '',
         };
-        if (currentUserId) {
-          row.user_id = currentUserId;
+        if (currentKey) {
+          row.user_id = currentKey;
         }
 
         if (!isExistingRecord) {
@@ -330,7 +338,7 @@ export class StorageService {
   // --- PAYMENTS ARCHIVE (Archivio Storico Pagamenti Negli Anni) ---
   static async getPayments(): Promise<Payment[]> {
     const supabase = getSupabase();
-    const currentUserId = getCurrentAuthUserId();
+    const currentKey = getCurrentLicenseKey();
 
     if (supabase) {
       try {
@@ -341,9 +349,19 @@ export class StorageService {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          const userRows = currentUserId
-            ? data.filter((row: any) => !row.user_id || row.user_id === currentUserId)
-            : data.filter((row: any) => !row.user_id);
+          const userRows = currentKey
+            ? data.filter((row: any) => {
+                if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
+                let meta: any = {};
+                try {
+                  if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
+                } catch {}
+                if (meta.license_key && meta.license_key === currentKey) return true;
+                if (row.user_id && row.user_id === currentKey) return true;
+                if (!meta.license_key && !row.user_id) return true; // legacy
+                return false;
+              })
+            : data;
 
           if (userRows.length > 0) {
             const list: Payment[] = userRows.map((row: any) => {
@@ -373,8 +391,8 @@ export class StorageService {
 
           // Se Supabase ha 0 pagamenti per questo utente, sincronizza da cache
           const localPayments = this.getLocalPayments();
-          if (localPayments.length > 0 && currentUserId) {
-            console.log('Migrazione automatica pagamenti locali su account Supabase...');
+          if (localPayments.length > 0 && currentKey) {
+            console.log('Migrazione automatica pagamenti locali su licenza...');
             const migrated: Payment[] = [];
             for (const p of localPayments) {
               const meta = {
@@ -386,6 +404,7 @@ export class StorageService {
                 year: p.year,
                 payment_method: p.payment_method,
                 notes: p.notes || '',
+                license_key: currentKey,
               };
               const row: any = {
                 category: 'canone_affitto',
@@ -393,7 +412,7 @@ export class StorageService {
                 amount: p.amount,
                 date: p.payment_date,
                 notes: JSON.stringify(meta),
-                user_id: currentUserId,
+                user_id: currentKey,
               };
               const { data: insData } = await safeInsert('expenses', row);
               if (insData) {
@@ -420,7 +439,7 @@ export class StorageService {
   static async recordPayment(payment: Payment): Promise<Payment> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(payment.id);
-    const currentUserId = getCurrentAuthUserId();
+    const currentKey = getCurrentLicenseKey();
 
     const meta = {
       tenant_id: payment.tenant_id,
@@ -431,6 +450,7 @@ export class StorageService {
       year: payment.year,
       payment_method: payment.payment_method,
       notes: payment.notes || '',
+      license_key: currentKey || undefined,
     };
 
     if (supabase) {
@@ -442,8 +462,8 @@ export class StorageService {
           date: payment.payment_date,
           notes: JSON.stringify(meta),
         };
-        if (currentUserId) {
-          row.user_id = currentUserId;
+        if (currentKey) {
+          row.user_id = currentKey;
         }
 
         if (!isExistingRecord) {
@@ -502,7 +522,7 @@ export class StorageService {
   // --- HOUSE EXPENSES (Bollette & Spese) ---
   static async getExpenses(): Promise<HouseExpense[]> {
     const supabase = getSupabase();
-    const currentUserId = getCurrentAuthUserId();
+    const currentKey = getCurrentLicenseKey();
 
     if (supabase) {
       try {
@@ -510,12 +530,23 @@ export class StorageService {
           .from('expenses')
           .select('*')
           .neq('category', 'canone_affitto')
+          .neq('category', 'system_license')
           .order('date', { ascending: false });
 
         if (!error && data) {
-          const userRows = currentUserId
-            ? data.filter((row: any) => !row.user_id || row.user_id === currentUserId)
-            : data.filter((row: any) => !row.user_id);
+          const userRows = currentKey
+            ? data.filter((row: any) => {
+                if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
+                let parsedMeta: any = {};
+                try {
+                  if (row.notes && row.notes.startsWith('{')) parsedMeta = JSON.parse(row.notes);
+                } catch {}
+                if (parsedMeta.license_key && parsedMeta.license_key === currentKey) return true;
+                if (row.user_id && row.user_id === currentKey) return true;
+                if (!parsedMeta.license_key && !row.user_id) return true;
+                return false;
+              })
+            : data;
 
           if (userRows.length > 0) {
             const list: HouseExpense[] = userRows.map((row: any) => {
@@ -548,23 +579,25 @@ export class StorageService {
             return list;
           }
 
-          // Se Supabase non ha ancora righe per questo utente, controlla cache locale
+          // Se Supabase non ha ancora righe per questa licenza, controlla cache locale
           const localExpenses = this.getLocalExpenses();
-          if (localExpenses.length > 0 && currentUserId) {
-            console.log('Migrazione automatica spese locali su account Supabase...');
+          if (localExpenses.length > 0 && currentKey) {
+            console.log('Migrazione automatica spese locali su licenza...');
             const migrated: HouseExpense[] = [];
             for (const exp of localExpenses) {
-              const serializedNotes = (exp.splits && exp.splits.length > 0)
-                ? JSON.stringify({ text: exp.notes || '', splits: exp.splits })
-                : (exp.notes || '');
+              const metaObj = {
+                text: exp.notes || '',
+                splits: (exp.splits && exp.splits.length > 0) ? exp.splits : undefined,
+                license_key: currentKey,
+              };
 
               const row: any = {
                 category: exp.category,
                 title: exp.title,
                 amount: exp.amount,
                 date: exp.date,
-                notes: serializedNotes,
-                user_id: currentUserId,
+                notes: JSON.stringify(metaObj),
+                user_id: currentKey,
               };
               const { data: insData } = await safeInsert('expenses', row);
               if (insData) {
@@ -591,11 +624,14 @@ export class StorageService {
   static async saveExpense(expense: HouseExpense): Promise<HouseExpense> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(expense.id);
-    const currentUserId = getCurrentAuthUserId();
+    const currentKey = getCurrentLicenseKey();
 
-    const serializedNotes = (expense.splits && expense.splits.length > 0)
-      ? JSON.stringify({ text: expense.notes || '', splits: expense.splits })
-      : (expense.notes || '');
+    const metaObj = {
+      text: expense.notes || '',
+      splits: (expense.splits && expense.splits.length > 0) ? expense.splits : undefined,
+      license_key: currentKey || undefined,
+    };
+    const serializedNotes = JSON.stringify(metaObj);
 
     if (supabase) {
       try {
@@ -606,8 +642,8 @@ export class StorageService {
           date: expense.date,
           notes: serializedNotes,
         };
-        if (currentUserId) {
-          row.user_id = currentUserId;
+        if (currentKey) {
+          row.user_id = currentKey;
         }
 
         if (!isExistingRecord) {

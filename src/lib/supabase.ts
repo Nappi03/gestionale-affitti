@@ -84,9 +84,25 @@ create table if not exists public.expenses (
   notes text default ''
 );
 
--- 3. Abilita Row Level Security (RLS)
+-- 3. Tabella Licenze & Clienti (Gestione Vendite & Kill Switch)
+create table if not exists public.app_licenses (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  license_key text not null unique,
+  client_name text not null,
+  property_name text default 'Appartamento 2 Camere',
+  is_active boolean default true not null, -- true = ATTIVO, false = SOSPESO
+  expires_at date,
+  contact_phone text default '',
+  notes text default ''
+);
+
+-- 4. Abilita Row Level Security (RLS)
 alter table public.bookings enable row level security;
 alter table public.expenses enable row level security;
+alter table public.app_licenses enable row level security;
+
+create policy "Accesso licenze" on public.app_licenses for all using (true) with check (true);
 
 -- 4. Politiche di Isolamento Multi-Tenant
 create policy "Proprietario isolamento bookings" on public.bookings

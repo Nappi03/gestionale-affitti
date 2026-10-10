@@ -58,3 +58,15 @@ export interface HouseExpense {
   created_at?: string;
 }
 
+export interface AppLicense {
+  id: string;
+  license_key: string; // es. "DOMUS-ROSSI", "CLIENTE-A", "DEMO"
+  client_name: string; // es. "Mario Rossi"
+  property_name?: string; // es. "Appartamento Via Roma"
+  is_active: boolean; // true = ATTIVO, false = BLOCCATO (Kill Switch)
+  expires_at?: string | null; // YYYY-MM-DD
+  contact_phone?: string;
+  notes?: string;
+  created_at?: string;
+}
+

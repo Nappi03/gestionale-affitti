@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { AuthScreen } from './components/AuthScreen';
+import { LicenseProvider, useLicense } from './context/LicenseContext';
+import { LicenseScreen } from './components/LicenseScreen';
+import { AdminLicensesModal } from './components/AdminLicensesModal';
 import { Navbar, type NavTab } from './components/Navbar';
 import { CurrentPaymentsView } from './components/CurrentPaymentsView';
 import { TenantsManager } from './components/TenantsManager';
@@ -15,7 +16,7 @@ import { StorageService, ROOMS } from './services/storageService';
 import type { Tenant, Payment, HouseExpense, Room, RoomId } from './types';
 
 function DomusRentDashboard() {
-  const { user, isGuestMode, loading: authLoading } = useAuth();
+  const { license, licenseKey, status, isGuestMode, loading: licenseLoading } = useLicense();
   const [activeTab, setActiveTab] = useState<NavTab>('payments_status');
   const [rooms] = useState<Room[]>(ROOMS);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -23,6 +24,9 @@ function DomusRentDashboard() {
   const [expenses, setExpenses] = useState<HouseExpense[]>([]);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Admin Licenses Modal state
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   // Modals state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -60,11 +64,11 @@ function DomusRentDashboard() {
   };
 
   useEffect(() => {
-    if (user || isGuestMode) {
+    if (licenseKey || isGuestMode) {
       setLoading(true);
       loadAllData();
     }
-  }, [user?.id, isGuestMode]);
+  }, [licenseKey, isGuestMode]);
 
   // --- Handlers: Payments ---
   const handleSavePayment = async (payment: Payment) => {
@@ -154,7 +158,7 @@ function DomusRentDashboard() {
     setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
   };
 
-  if (authLoading) {
+  if (licenseLoading) {
     return (
       <div style={{
         minHeight: '100dvh',
@@ -167,13 +171,21 @@ function DomusRentDashboard() {
         gap: 16,
       }}>
         <div className="status-dot connected" style={{ width: 14, height: 14 }} />
-        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#e2e8f0' }}>Caricamento DomusRent...</span>
+        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#e2e8f0' }}>Verifica Licenza DomusRent...</span>
       </div>
     );
   }
 
-  if (!user && !isGuestMode) {
-    return <AuthScreen />;
+  // Se non c'è una licenza valida o la licenza è sospesa/scaduta, mostra la schermata licenza
+  const isBlocked = (!license && !isGuestMode) || status === 'suspended' || status === 'expired' || status === 'not_found';
+
+  if (isBlocked) {
+    return (
+      <>
+        <LicenseScreen onOpenAdminModal={() => setIsAdminModalOpen(true)} />
+        <AdminLicensesModal isOpen={isAdminModalOpen} onClose={() => setIsAdminModalOpen(false)} />
+      </>
+    );
   }
 
   return (
@@ -186,6 +198,7 @@ function DomusRentDashboard() {
         onOpenNewPaymentModal={() => handleOpenPaymentModalWithContext()}
         onOpenNewTenantModal={() => handleOpenNewTenantModal()}
         onOpenSupabaseModal={() => setActiveTab('supabase')}
+        onOpenAdminLicensesModal={() => setIsAdminModalOpen(true)}
       />
 
       {/* Main Content */}
@@ -289,15 +302,21 @@ function DomusRentDashboard() {
         tenants={tenants}
         expenseToEdit={expenseToEdit}
       />
+
+      {/* Admin Licenses & Kill Switch Modal */}
+      <AdminLicensesModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+      />
     </div>
   );
 }
 
 export function App() {
   return (
-    <AuthProvider>
+    <LicenseProvider>
       <DomusRentDashboard />
-    </AuthProvider>
+    </LicenseProvider>
   );
 }
 
