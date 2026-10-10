@@ -15,7 +15,7 @@ import { StorageService, ROOMS } from './services/storageService';
 import type { Tenant, Payment, HouseExpense, Room, RoomId } from './types';
 
 function DomusRentDashboard() {
-  const { license, licenseKey, status, isGuestMode, loading: licenseLoading } = useLicense();
+  const { license, licenseKey, status, loading: licenseLoading } = useLicense();
   const [activeTab, setActiveTab] = useState<NavTab>('payments_status');
   const [rooms] = useState<Room[]>(ROOMS);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -23,8 +23,6 @@ function DomusRentDashboard() {
   const [expenses, setExpenses] = useState<HouseExpense[]>([]);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(true);
-
-
 
   // Modals state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -62,11 +60,16 @@ function DomusRentDashboard() {
   };
 
   useEffect(() => {
-    if (licenseKey || isGuestMode) {
+    if (licenseKey && status === 'active') {
       setLoading(true);
       loadAllData();
+    } else {
+      setTenants([]);
+      setPayments([]);
+      setExpenses([]);
+      setLoading(false);
     }
-  }, [licenseKey, isGuestMode]);
+  }, [licenseKey, status]);
 
   // Master Admin shortcut listener (navigazione rapida ad /?admin)
   useEffect(() => {
@@ -200,7 +203,7 @@ function DomusRentDashboard() {
   }
 
   // 2. Se non c'è una licenza valida o la licenza è sospesa/scaduta, mostra la schermata riservata
-  const isBlocked = (!license && !isGuestMode) || status === 'suspended' || status === 'expired' || status === 'not_found';
+  const isBlocked = !licenseKey || !license || status !== 'active';
 
   if (isBlocked) {
     return <LicenseScreen />;

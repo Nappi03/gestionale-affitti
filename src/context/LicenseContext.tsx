@@ -8,18 +8,13 @@ interface LicenseContextType {
   status: 'active' | 'suspended' | 'expired' | 'not_found' | 'demo' | 'admin' | null;
   loading: boolean;
   isAdmin: boolean;
-  isGuestMode: boolean;
   errorMessage: string | null;
   loginWithKey: (key: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  enableGuestMode: () => void;
   refreshLicenseStatus: () => Promise<void>;
 }
 
 const LicenseContext = createContext<LicenseContextType | undefined>(undefined);
-
-const STORAGE_KEY_ACTIVE_LICENSE = 'domus_active_license_key';
-const STORAGE_KEY_GUEST_MODE = 'domus_guest_mode_active';
 
 export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [license, setLicense] = useState<AppLicense | null>(null);
@@ -27,9 +22,6 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<'active' | 'suspended' | 'expired' | 'not_found' | 'demo' | 'admin' | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
-    return localStorage.getItem(STORAGE_KEY_GUEST_MODE) === 'true';
-  });
 
   const checkLicense = async (key: string): Promise<boolean> => {
     try {
@@ -40,17 +32,12 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       if (res.valid) {
         setErrorMessage(null);
-        localStorage.setItem(STORAGE_KEY_ACTIVE_LICENSE, key.trim().toUpperCase());
-        localStorage.removeItem(STORAGE_KEY_GUEST_MODE);
-        setIsGuestMode(false);
         return true;
       } else {
-        localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
         setErrorMessage(res.message || 'Licenza non valida.');
         return false;
       }
     } catch (e: any) {
-      localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
       setErrorMessage(e.message || 'Errore durante la verifica della licenza.');
       return false;
     }
@@ -58,12 +45,22 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     const init = async () => {
-      // 1. Controlla parametri URL (es. ?licenza=DOMUS-ROSSI o ?key=... oppure ?admin)
+      // Pulizia immediata e totale: nessuna credenziale/licenza deve persistere in localStorage tra sessioni/URL
+      try {
+        localStorage.removeItem('domus_active_license_key');
+        localStorage.removeItem('domus_guest_mode_active');
+        localStorage.removeItem('domus_current_auth_user_id');
+        localStorage.removeItem('domus_current_auth_user_email');
+      } catch {}
+
+      // 1. Controlla parametri URL (es. ?licenza=DOMUS-... oppure ?admin)
       const urlParams = new URLSearchParams(window.location.search);
       const urlKey = urlParams.get('licenza') || urlParams.get('key') || urlParams.get('license');
 
       if (urlParams.has('admin') || urlParams.has('master') || urlParams.has('gestione')) {
         setStatus('admin');
+        setLicense(null);
+        setLicenseKey(null);
         setLoading(false);
         return;
       }
@@ -74,25 +71,11 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return;
       }
 
-      // 2. Controlla chiave salvata precedentemente in localStorage
-      const savedKey = localStorage.getItem(STORAGE_KEY_ACTIVE_LICENSE);
-      if (savedKey) {
-        if (savedKey.toUpperCase() === 'ADMIN' || savedKey.toUpperCase() === 'DOMUS-ADMIN') {
-          // Rimuovi vecchie chiavi backdoor da localStorage
-          localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
-        } else {
-          await checkLicense(savedKey);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // 3. Controlla modalità demo salvata
-      if (localStorage.getItem(STORAGE_KEY_GUEST_MODE) === 'true') {
-        setIsGuestMode(true);
-        setStatus('demo');
-      }
-
+      // 2. Se l'URL non ha licenza e non è admin (es. http://localhost:5173/ o rimozione di /?admin):
+      // Accesso rigorosamente bloccato, nessun dato o studente caricato.
+      setStatus('not_found');
+      setLicense(null);
+      setLicenseKey(null);
       setLoading(false);
     };
 
@@ -111,32 +94,14 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
-    localStorage.removeItem(STORAGE_KEY_GUEST_MODE);
     setLicense(null);
     setLicenseKey(null);
-    setStatus(null);
-    setIsGuestMode(false);
+    setStatus('not_found');
     setErrorMessage(null);
   };
 
-  const enableGuestMode = () => {
-    localStorage.setItem(STORAGE_KEY_GUEST_MODE, 'true');
-    localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
-    setIsGuestMode(true);
-    setStatus('demo');
-    setLicense({
-      id: 'demo-local',
-      license_key: 'DEMO',
-      client_name: 'Proprietario Demo',
-      property_name: 'Appartamento 2 Camere (Test Locale)',
-      is_active: true,
-    });
-    setLicenseKey('DEMO');
-  };
-
   const refreshLicenseStatus = async () => {
-    if (licenseKey && status !== 'demo') {
+    if (licenseKey) {
       await checkLicense(licenseKey);
     }
   };
@@ -151,11 +116,9 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
         status,
         loading,
         isAdmin,
-        isGuestMode,
         errorMessage,
         loginWithKey,
         logout,
-        enableGuestMode,
         refreshLicenseStatus,
       }}
     >

@@ -28,10 +28,6 @@ const isUUID = (str?: string): boolean => {
 };
 
 export function getCurrentLicenseKey(): string | null {
-  const lic = localStorage.getItem('domus_active_license_key');
-  if (lic) return lic.trim().toUpperCase();
-  const authId = localStorage.getItem('domus_current_auth_user_id');
-  if (authId) return authId.trim().toUpperCase();
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const urlLic = params.get('licenza') || params.get('key') || params.get('license');
@@ -45,7 +41,7 @@ function getScopedKey(baseKey: string): string {
   if (licenseKey) {
     return `${baseKey}_${licenseKey}`;
   }
-  return `${baseKey}_demo`;
+  return `${baseKey}_unauthorized`;
 }
 
 function cleanRowForSupabase(row: any): any {
@@ -91,9 +87,10 @@ async function safeUpdate(table: string, id: string, rawRow: any): Promise<{ dat
 }
 
 export class StorageService {
-  // Scoped localStorage Helpers
+  // Scoped localStorage Helpers: bloccati rigorosamente se non c'è una licenza attiva
   static getLocalTenants(): Tenant[] {
     const key = getCurrentLicenseKey();
+    if (!key) return [];
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     let raw = localStorage.getItem(scopedKey);
     // Solo per DOMUS-FRANCESCO-NAPPI recupera la cache legacy iniziale se non ancora migrata
@@ -109,12 +106,15 @@ export class StorageService {
   }
 
   static setLocalTenants(data: Tenant[]): void {
+    const key = getCurrentLicenseKey();
+    if (!key) return;
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
   }
 
   static getLocalPayments(): Payment[] {
     const key = getCurrentLicenseKey();
+    if (!key) return [];
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     let raw = localStorage.getItem(scopedKey);
     if (!raw && key === 'DOMUS-FRANCESCO-NAPPI') {
@@ -129,12 +129,15 @@ export class StorageService {
   }
 
   static setLocalPayments(data: Payment[]): void {
+    const key = getCurrentLicenseKey();
+    if (!key) return;
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
   }
 
   static getLocalExpenses(): HouseExpense[] {
     const key = getCurrentLicenseKey();
+    if (!key) return [];
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     let raw = localStorage.getItem(scopedKey);
     if (!raw && key === 'DOMUS-FRANCESCO-NAPPI') {
@@ -149,6 +152,8 @@ export class StorageService {
   }
 
   static setLocalExpenses(data: HouseExpense[]): void {
+    const key = getCurrentLicenseKey();
+    if (!key) return;
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
   }
@@ -168,27 +173,20 @@ export class StorageService {
 
   // --- TENANTS (I Ragazzi) ---
   static async getTenants(): Promise<Tenant[]> {
-    const supabase = getSupabase();
     const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return [];
 
+    const supabase = getSupabase();
     if (supabase) {
       try {
         const { data, error } = await supabase.from('bookings').select('*');
         if (!error && data) {
           // Filtro multi-tenant rigoroso per licenza
-          const userRows = currentKey
-            ? data.filter((row: any) => {
-                if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
-                const rowLic = (row.platform || row.user_id || '').trim().toUpperCase();
-                if (rowLic === currentKey) return true;
-                if (row.notes && row.notes.toUpperCase().includes(currentKey)) return true;
-                // I record legacy appartengono unicamente a DOMUS-FRANCESCO-NAPPI
-                if (currentKey === 'DOMUS-FRANCESCO-NAPPI') {
-                  if (!row.platform || row.platform === 'student' || row.platform === 'direct') return true;
-                }
-                return false;
-              })
-            : [];
+          const userRows = data.filter((row: any) => {
+            if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
+            const rowLic = (row.platform || row.user_id || '').trim().toUpperCase();
+            return rowLic === currentKey;
+          });
 
           const list: Tenant[] = userRows.map((row: any) => ({
             id: row.id,
@@ -213,14 +211,15 @@ export class StorageService {
       }
     }
 
-    const local = this.getLocalTenants();
-    return local;
+    return this.getLocalTenants();
   }
 
   static async saveTenant(tenant: Tenant): Promise<Tenant> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) throw new Error('Operazione non autorizzata: nessuna licenza attiva.');
+
     const supabase = getSupabase();
     const isExistingRecord = isUUID(tenant.id);
-    const currentKey = (getCurrentLicenseKey() || 'DOMUS-DEFAULT').trim().toUpperCase();
 
     if (supabase) {
       try {
@@ -291,6 +290,8 @@ export class StorageService {
   }
 
   static async archiveTenant(tenantId: string): Promise<boolean> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return false;
     const list = await this.getTenants();
     const tenant = list.find(t => t.id === tenantId);
     if (!tenant) return false;
@@ -301,6 +302,8 @@ export class StorageService {
   }
 
   static async deleteTenant(tenantId: string): Promise<boolean> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return false;
     const supabase = getSupabase();
     if (supabase && isUUID(tenantId)) {
       try {
@@ -318,9 +321,10 @@ export class StorageService {
 
   // --- PAYMENTS ARCHIVE (Archivio Storico Pagamenti Negli Anni) ---
   static async getPayments(): Promise<Payment[]> {
-    const supabase = getSupabase();
     const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return [];
 
+    const supabase = getSupabase();
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -330,21 +334,15 @@ export class StorageService {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          const userRows = currentKey
-            ? data.filter((row: any) => {
-                if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
-                let meta: any = {};
-                try {
-                  if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
-                } catch {}
-                const lic = (meta.license_key || row.user_id || '').trim().toUpperCase();
-                if (lic === currentKey) return true;
-                if (currentKey === 'DOMUS-FRANCESCO-NAPPI' && !meta.license_key && !row.user_id) {
-                  return true;
-                }
-                return false;
-              })
-            : [];
+          const userRows = data.filter((row: any) => {
+            if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
+            let meta: any = {};
+            try {
+              if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
+            } catch {}
+            const lic = (meta.license_key || row.user_id || '').trim().toUpperCase();
+            return lic === currentKey;
+          });
 
           const list: Payment[] = userRows.map((row: any) => {
             let meta: any = {};
@@ -376,14 +374,15 @@ export class StorageService {
       }
     }
 
-    const local = this.getLocalPayments();
-    return local;
+    return this.getLocalPayments();
   }
 
   static async recordPayment(payment: Payment): Promise<Payment> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) throw new Error('Operazione non autorizzata: nessuna licenza attiva.');
+
     const supabase = getSupabase();
     const isExistingRecord = isUUID(payment.id);
-    const currentKey = (getCurrentLicenseKey() || 'DOMUS-DEFAULT').trim().toUpperCase();
 
     const meta = {
       tenant_id: payment.tenant_id,
@@ -446,6 +445,9 @@ export class StorageService {
   }
 
   static async deletePayment(paymentId: string): Promise<boolean> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return false;
+
     const supabase = getSupabase();
     if (supabase && isUUID(paymentId)) {
       try {
@@ -463,9 +465,10 @@ export class StorageService {
 
   // --- HOUSE EXPENSES (Bollette & Spese) ---
   static async getExpenses(): Promise<HouseExpense[]> {
-    const supabase = getSupabase();
     const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return [];
 
+    const supabase = getSupabase();
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -476,21 +479,15 @@ export class StorageService {
           .order('date', { ascending: false });
 
         if (!error && data) {
-          const userRows = currentKey
-            ? data.filter((row: any) => {
-                if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
-                let parsedMeta: any = {};
-                try {
-                  if (row.notes && row.notes.startsWith('{')) parsedMeta = JSON.parse(row.notes);
-                } catch {}
-                const lic = (parsedMeta.license_key || row.user_id || '').trim().toUpperCase();
-                if (lic === currentKey) return true;
-                if (currentKey === 'DOMUS-FRANCESCO-NAPPI' && !parsedMeta.license_key && !row.user_id) {
-                  return true;
-                }
-                return false;
-              })
-            : [];
+          const userRows = data.filter((row: any) => {
+            if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
+            let parsedMeta: any = {};
+            try {
+              if (row.notes && row.notes.startsWith('{')) parsedMeta = JSON.parse(row.notes);
+            } catch {}
+            const lic = (parsedMeta.license_key || row.user_id || '').trim().toUpperCase();
+            return lic === currentKey;
+          });
 
           const list: HouseExpense[] = userRows.map((row: any) => {
             let noteText = row.notes || '';
@@ -527,14 +524,15 @@ export class StorageService {
       }
     }
 
-    const local = this.getLocalExpenses();
-    return local;
+    return this.getLocalExpenses();
   }
 
   static async saveExpense(expense: HouseExpense): Promise<HouseExpense> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) throw new Error('Operazione non autorizzata: nessuna licenza attiva.');
+
     const supabase = getSupabase();
     const isExistingRecord = isUUID(expense.id);
-    const currentKey = (getCurrentLicenseKey() || 'DOMUS-DEFAULT').trim().toUpperCase();
 
     const metaObj = {
       text: expense.notes || '',
@@ -592,6 +590,9 @@ export class StorageService {
   }
 
   static async deleteExpense(expenseId: string): Promise<boolean> {
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
+    if (!currentKey) return false;
+
     const supabase = getSupabase();
     if (supabase && isUUID(expenseId)) {
       try {

@@ -39,9 +39,9 @@ export const Navbar: FC<NavbarProps> = ({
         <div className="brand-section">
           <div 
             className="brand-logo-icon"
-            onDoubleClick={onOpenAdminLicensesModal}
-            title={isAdmin ? "DomusRent Master Admin" : "DomusRent"}
-            style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+            onDoubleClick={isAdmin ? onOpenAdminLicensesModal : undefined}
+            title="DomusRent"
+            style={{ cursor: 'default' }}
           >
             <Building2 size={22} />
           </div>
