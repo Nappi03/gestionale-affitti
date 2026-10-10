@@ -1,12 +1,14 @@
 import { useState, useEffect, type FC } from 'react';
 import { X, CreditCard, Save } from 'lucide-react';
-import type { Payment, Tenant } from '../types';
+import type { Payment, Room, Tenant } from '../types';
+import { getRoomName } from '../services/storageService';
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (payment: Payment) => void;
   tenants: Tenant[];
+  rooms?: Room[];
   initialTenant?: Tenant;
   initialMonthKey?: string;
   initialMonthLabel?: string;
@@ -17,6 +19,7 @@ export const PaymentModal: FC<PaymentModalProps> = ({
   onClose,
   onSave,
   tenants,
+  rooms = [],
   initialTenant,
   initialMonthKey,
 }) => {
@@ -135,7 +138,7 @@ export const PaymentModal: FC<PaymentModalProps> = ({
             >
               {activeTenants.map(t => (
                 <option key={t.id} value={t.id}>
-                  {t.name} ({t.room_id === 'room-1' ? 'Camera A' : 'Camera B'} - €{t.monthly_rent}/m)
+                  {t.name} ({getRoomName(t.room_id, rooms)} - €{t.monthly_rent}/m)
                 </option>
               ))}
             </select>

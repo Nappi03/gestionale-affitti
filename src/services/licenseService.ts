@@ -46,6 +46,8 @@ export class LicenseService {
                 license_key: meta.license_key || 'LIC-UNKNOWN',
                 client_name: meta.client_name || row.title,
                 property_name: meta.property_name || 'Appartamento',
+                rooms_count: Number(meta.rooms_count) || (Array.isArray(meta.custom_rooms) ? meta.custom_rooms.length : 2),
+                custom_rooms: Array.isArray(meta.custom_rooms) ? meta.custom_rooms : undefined,
                 is_active: meta.is_active !== false,
                 expires_at: meta.expires_at || undefined,
                 contact_phone: meta.contact_phone || '',
@@ -154,10 +156,13 @@ export class LicenseService {
 
       // 2. Fallback in tabella expenses
       try {
+        const roomsCount = Number(licenseData.rooms_count) || 2;
         const meta = {
           license_key: cleanKey,
           client_name: licenseData.client_name,
-          property_name: licenseData.property_name || 'Appartamento 2 Camere',
+          property_name: licenseData.property_name || `Appartamento ${roomsCount} Camere`,
+          rooms_count: roomsCount,
+          custom_rooms: licenseData.custom_rooms || undefined,
           is_active: licenseData.is_active !== false,
           expires_at: licenseData.expires_at || null,
           contact_phone: licenseData.contact_phone || '',
@@ -196,6 +201,7 @@ export class LicenseService {
       id: localId,
       ...licenseData,
       license_key: cleanKey,
+      rooms_count: Number(licenseData.rooms_count) || 2,
       created_at: new Date().toISOString(),
     };
     const list = await this.getLicenses();
@@ -265,6 +271,8 @@ export class LicenseService {
         if (updates.expires_at !== undefined) payload.expires_at = updates.expires_at || null;
         if (updates.is_active !== undefined) payload.is_active = updates.is_active;
         if (updates.notes !== undefined) payload.notes = updates.notes;
+        if (updates.rooms_count !== undefined) payload.rooms_count = Number(updates.rooms_count);
+        if (updates.custom_rooms !== undefined) payload.custom_rooms = updates.custom_rooms;
         if (updates.license_key !== undefined) payload.license_key = updates.license_key.trim().toUpperCase();
 
         const { error } = await supabase
@@ -288,6 +296,7 @@ export class LicenseService {
             meta = JSON.parse(data.notes);
           } catch {}
           const updatedMeta = { ...meta, ...updates };
+          if (updates.rooms_count !== undefined) updatedMeta.rooms_count = Number(updates.rooms_count);
           if (updates.license_key) updatedMeta.license_key = updates.license_key.trim().toUpperCase();
 
           await supabase.from('expenses').update({

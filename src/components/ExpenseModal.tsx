@@ -1,12 +1,14 @@
 import { useState, useEffect, type FC } from 'react';
 import { X, Receipt, Save, Users, Calculator, Check, AlertCircle } from 'lucide-react';
-import type { HouseExpense, Tenant, ExpenseSplit } from '../types';
+import type { HouseExpense, Room, Tenant, ExpenseSplit } from '../types';
+import { getRoomName, getRoomColor } from '../services/storageService';
 
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (expense: HouseExpense) => void;
   tenants: Tenant[];
+  rooms?: Room[];
   expenseToEdit?: HouseExpense | null;
 }
 
@@ -15,6 +17,7 @@ export const ExpenseModal: FC<ExpenseModalProps> = ({
   onClose,
   onSave,
   tenants,
+  rooms = [],
   expenseToEdit,
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -444,9 +447,24 @@ export const ExpenseModal: FC<ExpenseModalProps> = ({
                                     {tenant.name}
                                   </strong>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                                    <span className={`badge ${tenant.room_id === 'room-1' ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
-                                      {tenant.room_id === 'room-1' ? 'Camera A' : 'Camera B'}
-                                    </span>
+                                    {(() => {
+                                      const roomName = getRoomName(tenant.room_id, rooms);
+                                      const roomColor = getRoomColor(tenant.room_id, rooms);
+                                      return (
+                                        <span 
+                                          className="badge" 
+                                          style={{ 
+                                            fontSize: '0.68rem', 
+                                            padding: '2px 6px',
+                                            background: `${roomColor}20`,
+                                            color: roomColor,
+                                            border: `1px solid ${roomColor}40`
+                                          }}
+                                        >
+                                          {roomName}
+                                        </span>
+                                      );
+                                    })()}
                                     {existing?.is_paid && (
                                       <span style={{ fontSize: '0.7rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 3 }}>
                                         <Check size={11} /> Già pagato

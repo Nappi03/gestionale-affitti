@@ -36,8 +36,7 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
   const activeTenants = tenants.filter(t => t.is_active);
   const archivedTenants = tenants.filter(t => !t.is_active);
 
-  const studentsRoomA = activeTenants.filter(t => t.room_id === 'room-1');
-  const studentsRoomB = activeTenants.filter(t => t.room_id === 'room-2');
+  const getStudentsForRoom = (roomId: string) => activeTenants.filter(t => t.room_id === roomId);
   const totalRentAll = activeTenants.reduce((sum, t) => sum + (Number(t.monthly_rent) || 0), 0);
 
   const getInitials = (name: string) => {
@@ -67,7 +66,7 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
             <div>
               <h2 style={{ fontSize: '1.35rem' }}>Anagrafica Studenti & Camere</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                Gestione dei ragazzi domiciliati in Camera A e Camera B (media 2 studenti per stanza)
+                Gestione dei ragazzi suddivisi per alloggio ({rooms.map(r => r.name).join(', ')})
               </p>
             </div>
           </div>
@@ -99,31 +98,23 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
           </div>
         </div>
 
-        <div className="glass-card stat-card" style={{ ['--stat-glow' as string]: '#10b981' }}>
-          <div className="stat-header">
-            <span>Camera A</span>
-            <BedDouble size={18} color="#10b981" />
-          </div>
-          <div className="stat-value" style={{ color: '#10b981' }}>
-            {studentsRoomA.length} studenti
-          </div>
-          <div className="stat-subtext">
-            Media 2 studenti per stanza
-          </div>
-        </div>
-
-        <div className="glass-card stat-card" style={{ ['--stat-glow' as string]: '#6366f1' }}>
-          <div className="stat-header">
-            <span>Camera B</span>
-            <BedDouble size={18} color="#6366f1" />
-          </div>
-          <div className="stat-value" style={{ color: '#a5b4fc' }}>
-            {studentsRoomB.length} studenti
-          </div>
-          <div className="stat-subtext">
-            Media 2 studenti per stanza
-          </div>
-        </div>
+        {rooms.map((room) => {
+          const roomStudents = getStudentsForRoom(room.id);
+          return (
+            <div key={room.id} className="glass-card stat-card" style={{ ['--stat-glow' as string]: room.accentHex }}>
+              <div className="stat-header">
+                <span>{room.name}</span>
+                <BedDouble size={18} color={room.accentHex} />
+              </div>
+              <div className="stat-value" style={{ color: room.accentHex }}>
+                {roomStudents.length} studenti
+              </div>
+              <div className="stat-subtext">
+                Canone base €{room.defaultRent}/m
+              </div>
+            </div>
+          );
+        })}
 
         <div className="glass-card stat-card" style={{ ['--stat-glow' as string]: '#f59e0b' }}>
           <div className="stat-header">
@@ -141,9 +132,8 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
 
       {/* Room Grouping Sections */}
       {rooms.map(room => {
-        const isRoomA = room.id === 'room-1';
-        const roomStudents = isRoomA ? studentsRoomA : studentsRoomB;
-        const accentColor = isRoomA ? 'var(--room1-main)' : 'var(--room2-main)';
+        const roomStudents = getStudentsForRoom(room.id);
+        const accentColor = room.accentHex || '#6366f1';
 
         return (
           <div key={room.id} style={{ marginBottom: 36 }}>
@@ -159,7 +149,17 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
               borderBottom: `2px solid ${accentColor}`
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className={`badge ${isRoomA ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.85rem', padding: '6px 12px' }}>
+                <span 
+                  className="badge" 
+                  style={{ 
+                    fontSize: '0.85rem', 
+                    padding: '6px 14px',
+                    background: `${accentColor}20`,
+                    color: accentColor,
+                    border: `1px solid ${accentColor}40`,
+                    fontWeight: 700
+                  }}
+                >
                   {room.name}
                 </span>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
@@ -168,10 +168,11 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
               </div>
 
               <button
-                className={`btn btn-sm ${isRoomA ? 'btn-outline-room1' : 'btn-outline-room2'}`}
+                className="btn btn-sm btn-secondary"
+                style={{ borderColor: `${accentColor}60`, color: '#ffffff' }}
                 onClick={() => onOpenNewTenantModal(room.id)}
               >
-                <UserPlus size={14} />
+                <UserPlus size={14} color={accentColor} />
                 <span>+ Aggiungi Studente in {room.name}</span>
               </button>
             </div>
@@ -210,11 +211,9 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
                             width: 44,
                             height: 44,
                             borderRadius: '50%',
-                            background: isRoomA 
-                              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.05))' 
-                              : 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(99, 102, 241, 0.05))',
-                            border: `1.5px solid ${isRoomA ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.4)'}`,
-                            color: isRoomA ? '#34d399' : '#a5b4fc',
+                            background: `${accentColor}25`,
+                            border: `1.5px solid ${accentColor}50`,
+                            color: accentColor,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -223,13 +222,25 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
                           }}>
                             {getInitials(tenant.name)}
                           </div>
+
                           <div>
                             <h4 style={{ fontSize: '1.25rem', color: '#ffffff', lineHeight: 1.2 }}>
                               {tenant.name}
                             </h4>
-                            <span className={`badge ${isRoomA ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.72rem', padding: '2px 8px', marginTop: 4 }}>
-                              {room.name}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                              <span 
+                                className="badge" 
+                                style={{ 
+                                  fontSize: '0.74rem', 
+                                  padding: '2px 8px',
+                                  background: `${accentColor}20`,
+                                  color: accentColor,
+                                  border: `1px solid ${accentColor}40`
+                                }}
+                              >
+                                {room.name}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
@@ -378,9 +389,21 @@ export const TenantsManager: FC<TenantsManagerProps> = ({
                       {at.name}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span className={`badge ${at.room_id === 'room-1' ? 'badge-room1' : 'badge-room2'}`}>
-                        {at.room_id === 'room-1' ? 'Camera A' : 'Camera B'}
-                      </span>
+                      {(() => {
+                        const rObj = rooms.find(r => r.id === at.room_id);
+                        return (
+                          <span 
+                            className="badge" 
+                            style={{ 
+                              background: `${rObj?.accentHex || '#6366f1'}20`, 
+                              color: rObj?.accentHex || '#a5b4fc', 
+                              border: `1px solid ${rObj?.accentHex || '#6366f1'}40` 
+                            }}
+                          >
+                            {rObj ? rObj.name : at.room_id}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
                       {formatDate(at.start_date)} ➔ {formatDate(at.end_date)}

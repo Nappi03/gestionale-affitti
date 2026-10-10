@@ -60,7 +60,7 @@ export const Navbar: FC<NavbarProps> = ({
               </div>
             </div>
             <span className="brand-subtitle">
-              {license?.property_name || 'Appartamento 2 Camere'}
+              {license?.property_name || `Appartamento ${license?.rooms_count || 2} Camere`}
             </span>
           </div>
         </div>

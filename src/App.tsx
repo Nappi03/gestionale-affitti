@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LicenseProvider, useLicense } from './context/LicenseContext';
 import { LicenseScreen } from './components/LicenseScreen';
 import { AdminLicensesModal } from './components/AdminLicensesModal';
@@ -11,13 +11,17 @@ import { PaymentModal } from './components/PaymentModal';
 import { TenantModal } from './components/TenantModal';
 import { ExpenseModal } from './components/ExpenseModal';
 
-import { StorageService, ROOMS } from './services/storageService';
-import type { Tenant, Payment, HouseExpense, Room, RoomId } from './types';
+import { StorageService, generateRooms } from './services/storageService';
+import type { Tenant, Payment, HouseExpense, RoomId } from './types';
 
 function DomusRentDashboard() {
   const { license, licenseKey, status, loading: licenseLoading } = useLicense();
   const [activeTab, setActiveTab] = useState<NavTab>('payments_status');
-  const [rooms] = useState<Room[]>(ROOMS);
+  const rooms = useMemo(() => {
+    const count = license?.rooms_count || 2;
+    return generateRooms(count, license?.custom_rooms);
+  }, [license?.rooms_count, license?.custom_rooms]);
+
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<HouseExpense[]>([]);
@@ -268,6 +272,7 @@ function DomusRentDashboard() {
 
             {activeTab === 'expenses' && (
               <ExpensesView
+                rooms={rooms}
                 expenses={expenses}
                 tenants={tenants}
                 onOpenNewExpenseModal={() => {
@@ -292,6 +297,7 @@ function DomusRentDashboard() {
         onClose={() => setIsPaymentModalOpen(false)}
         onSave={handleSavePayment}
         tenants={tenants}
+        rooms={rooms}
         initialTenant={paymentInitialTenant}
         initialMonthKey={paymentInitialMonthKey}
         initialMonthLabel={paymentInitialMonthLabel}
@@ -316,6 +322,7 @@ function DomusRentDashboard() {
         }}
         onSave={handleSaveExpense}
         tenants={tenants}
+        rooms={rooms}
         expenseToEdit={expenseToEdit}
       />
 

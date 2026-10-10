@@ -17,6 +17,7 @@ import {
   Save 
 } from 'lucide-react';
 import { LicenseService } from '../services/licenseService';
+import { generateRooms } from '../services/storageService';
 import type { AppLicense } from '../types';
 
 interface AdminLicensesModalProps {
@@ -41,6 +42,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   // New license form state
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newClientName, setNewClientName] = useState('');
+  const [newRoomsCount, setNewRoomsCount] = useState<number>(2);
   const [newPropertyName, setNewPropertyName] = useState('Appartamento 2 Camere');
   const [newLicenseKey, setNewLicenseKey] = useState('');
   const [newExpiresAt, setNewExpiresAt] = useState('');
@@ -50,6 +52,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   // Edit license form state
   const [editingLicense, setEditingLicense] = useState<AppLicense | null>(null);
   const [editClientName, setEditClientName] = useState('');
+  const [editRoomsCount, setEditRoomsCount] = useState<number>(2);
   const [editPropertyName, setEditPropertyName] = useState('');
   const [editLicenseKey, setEditLicenseKey] = useState('');
   const [editExpiresAt, setEditExpiresAt] = useState('');
@@ -95,6 +98,23 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
     }
   };
 
+  const handleCreateRoomsCountChange = (count: number) => {
+    const validCount = Math.max(1, Math.min(20, count));
+    setNewRoomsCount(validCount);
+    // Aggiorna automaticamente il nome immobile se ha il pattern predefinito
+    if (!newPropertyName || /^Appartamento \d+ Camer[ae]$/i.test(newPropertyName.trim())) {
+      setNewPropertyName(`Appartamento ${validCount} ${validCount === 1 ? 'Camera' : 'Camere'}`);
+    }
+  };
+
+  const handleEditRoomsCountChange = (count: number) => {
+    const validCount = Math.max(1, Math.min(20, count));
+    setEditRoomsCount(validCount);
+    if (!editPropertyName || /^Appartamento \d+ Camer[ae]$/i.test(editPropertyName.trim())) {
+      setEditPropertyName(`Appartamento ${validCount} ${validCount === 1 ? 'Camera' : 'Camere'}`);
+    }
+  };
+
   const handleCreateLicense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClientName || !newLicenseKey) return;
@@ -103,14 +123,17 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
     try {
       await LicenseService.createLicense({
         client_name: newClientName.trim(),
-        property_name: newPropertyName.trim() || 'Appartamento 2 Camere',
+        property_name: newPropertyName.trim() || `Appartamento ${newRoomsCount} Camere`,
         license_key: newLicenseKey.trim().toUpperCase(),
         is_active: true,
+        rooms_count: Number(newRoomsCount) || 2,
         expires_at: newExpiresAt || undefined,
         contact_phone: newPhone.trim() || undefined,
       });
 
       setNewClientName('');
+      setNewRoomsCount(2);
+      setNewPropertyName('Appartamento 2 Camere');
       setNewLicenseKey('');
       setNewExpiresAt('');
       setNewPhone('');
@@ -124,7 +147,8 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   const handleStartEdit = (lic: AppLicense) => {
     setEditingLicense(lic);
     setEditClientName(lic.client_name);
-    setEditPropertyName(lic.property_name || 'Appartamento 2 Camere');
+    setEditRoomsCount(lic.rooms_count || 2);
+    setEditPropertyName(lic.property_name || `Appartamento ${lic.rooms_count || 2} Camere`);
     setEditLicenseKey(lic.license_key);
     setEditExpiresAt(lic.expires_at || '');
     setEditPhone(lic.contact_phone || '');
@@ -143,8 +167,9 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
     try {
       await LicenseService.updateLicense(editingLicense.id, {
         client_name: editClientName.trim(),
-        property_name: editPropertyName.trim() || 'Appartamento 2 Camere',
+        property_name: editPropertyName.trim() || `Appartamento ${editRoomsCount} Camere`,
         license_key: editLicenseKey.trim().toUpperCase(),
+        rooms_count: Number(editRoomsCount) || 2,
         expires_at: editExpiresAt || undefined,
         contact_phone: editPhone.trim() || undefined,
       });
@@ -390,10 +415,82 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="Es: Appartamento Via Roma (2 Camere)"
+                      placeholder="Es: Appartamento Via Roma (3 Camere)"
                       value={newPropertyName}
                       onChange={(e) => setNewPropertyName(e.target.value)}
                     />
+                  </div>
+
+                  {/* Selezione dinamica Numero Camere */}
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#c7d2fe' }}>
+                        Numero Camere Immobile *
+                      </label>
+                      <span style={{ fontSize: '0.74rem', color: '#818cf8', fontWeight: 600 }}>
+                        {newRoomsCount} {newRoomsCount === 1 ? 'Camera configurata' : 'Camere configurate'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {[1, 2, 3, 4, 5, 6].map(num => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => handleCreateRoomsCountChange(num)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 'var(--radius-md)',
+                            border: newRoomsCount === num ? '1px solid #6366f1' : '1px solid var(--border-subtle)',
+                            background: newRoomsCount === num ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                            color: newRoomsCount === num ? '#ffffff' : 'var(--text-secondary)',
+                            fontWeight: newRoomsCount === num ? 700 : 500,
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {num} {num === 1 ? 'Camera' : 'Camere'}
+                        </button>
+                      ))}
+
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Altro:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          className="form-input"
+                          style={{ width: 68, padding: '5px 8px', textAlign: 'center', fontSize: '0.85rem' }}
+                          value={newRoomsCount}
+                          onChange={(e) => handleCreateRoomsCountChange(parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview Badge Camere generate */}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                      {generateRooms(newRoomsCount).map(r => (
+                        <span
+                          key={r.id}
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            background: `${r.accentHex}20`,
+                            color: r.accentHex,
+                            border: `1px solid ${r.accentHex}40`,
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.accentHex }} />
+                          {r.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -483,6 +580,78 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                       value={editPropertyName}
                       onChange={(e) => setEditPropertyName(e.target.value)}
                     />
+                  </div>
+
+                  {/* Selezione dinamica Numero Camere in Modifica */}
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <label className="form-label" style={{ fontSize: '0.78rem', margin: 0, fontWeight: 700, color: '#6ee7b7' }}>
+                        Numero Camere Immobile *
+                      </label>
+                      <span style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 600 }}>
+                        {editRoomsCount} {editRoomsCount === 1 ? 'Camera configurata' : 'Camere configurate'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {[1, 2, 3, 4, 5, 6].map(num => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => handleEditRoomsCountChange(num)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 'var(--radius-md)',
+                            border: editRoomsCount === num ? '1px solid #10b981' : '1px solid var(--border-subtle)',
+                            background: editRoomsCount === num ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                            color: editRoomsCount === num ? '#ffffff' : 'var(--text-secondary)',
+                            fontWeight: editRoomsCount === num ? 700 : 500,
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {num} {num === 1 ? 'Camera' : 'Camere'}
+                        </button>
+                      ))}
+
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Altro:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          className="form-input"
+                          style={{ width: 68, padding: '5px 8px', textAlign: 'center', fontSize: '0.85rem' }}
+                          value={editRoomsCount}
+                          onChange={(e) => handleEditRoomsCountChange(parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview Badge Camere in modifica */}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                      {generateRooms(editRoomsCount).map(r => (
+                        <span
+                          key={r.id}
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            background: `${r.accentHex}20`,
+                            color: r.accentHex,
+                            border: `1px solid ${r.accentHex}40`,
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.accentHex }} />
+                          {r.name}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -593,12 +762,27 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                           }}>
                             {lic.is_active ? '🟢 ATTIVO' : '🔴 SOSPESO (KILL SWITCH)'}
                           </span>
+
+                          <span style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            color: '#a5b4fc',
+                            fontWeight: 700,
+                            border: '1px solid rgba(99, 102, 241, 0.35)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}>
+                            🚪 {lic.rooms_count || 2} {(lic.rooms_count || 2) === 1 ? 'Camera' : 'Camere'}
+                          </span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 6, flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                             <Building size={14} />
-                            {lic.property_name || 'Appartamento 2 Camere'}
+                            {lic.property_name || `Appartamento ${lic.rooms_count || 2} Camere`}
                           </span>
 
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -641,6 +825,30 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                               Scadenza: {lic.expires_at}
                             </span>
                           )}
+                        </div>
+
+                        {/* Visualizzazione rapida delle camere dell'immobile */}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                          {generateRooms(lic.rooms_count || 2, lic.custom_rooms).map((r) => (
+                            <span 
+                              key={r.id} 
+                              style={{
+                                fontSize: '0.7rem',
+                                padding: '1px 7px',
+                                borderRadius: 4,
+                                background: `${r.accentHex}18`,
+                                color: r.accentHex,
+                                border: `1px solid ${r.accentHex}40`,
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.accentHex }} />
+                              {r.name}
+                            </span>
+                          ))}
                         </div>
                       </div>
 

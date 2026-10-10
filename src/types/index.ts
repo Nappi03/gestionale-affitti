@@ -1,4 +1,4 @@
-export type RoomId = 'room-1' | 'room-2';
+export type RoomId = string;
 
 export interface Room {
   id: RoomId;
@@ -63,6 +63,8 @@ export interface AppLicense {
   license_key: string; // es. "DOMUS-ROSSI", "CLIENTE-A", "DEMO"
   client_name: string; // es. "Mario Rossi"
   property_name?: string; // es. "Appartamento Via Roma"
+  rooms_count?: number; // numero di camere (es. 1, 2, 3, 4, 5...)
+  custom_rooms?: Room[]; // opzionale lista stanze personalizzate
   is_active: boolean; // true = ATTIVO, false = BLOCCATO (Kill Switch)
   expires_at?: string | null; // YYYY-MM-DD
   contact_phone?: string;

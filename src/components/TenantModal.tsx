@@ -22,7 +22,7 @@ export const TenantModal: FC<TenantModalProps> = ({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [roomId, setRoomId] = useState<RoomId>('room-1');
+  const [roomId, setRoomId] = useState<RoomId>(() => preselectedRoomId || rooms[0]?.id || 'room-1');
   const [monthlyRent, setMonthlyRent] = useState<number | ''>(300);
   const [depositAmount, setDepositAmount] = useState<number | ''>(100);
   const [startDate, setStartDate] = useState('2026-10-01');
@@ -41,25 +41,27 @@ export const TenantModal: FC<TenantModalProps> = ({
       setEndDate(tenantToEdit.end_date);
       setNotes(tenantToEdit.notes || '');
     } else {
-      const targetRoom = preselectedRoomId || 'room-1';
+      const targetRoom = preselectedRoomId || rooms[0]?.id || 'room-1';
+      const rObj = rooms.find(r => r.id === targetRoom);
       setName('');
       setPhone('');
       setEmail('');
       setRoomId(targetRoom);
-      setMonthlyRent(300);
+      setMonthlyRent(rObj?.defaultRent || 300);
       setDepositAmount(100);
       setStartDate('2026-10-01');
       setEndDate('2027-07-31');
       setNotes('');
     }
-  }, [tenantToEdit, preselectedRoomId, isOpen]);
+  }, [tenantToEdit, preselectedRoomId, isOpen, rooms]);
 
   if (!isOpen) return null;
 
   const handleRoomChange = (newRoom: RoomId) => {
     setRoomId(newRoom);
     if (!tenantToEdit) {
-      setMonthlyRent(300);
+      const rObj = rooms.find(r => r.id === newRoom);
+      setMonthlyRent(rObj?.defaultRent || 300);
       setDepositAmount(100);
     }
   };
@@ -124,18 +126,20 @@ export const TenantModal: FC<TenantModalProps> = ({
           {/* Room Selector */}
           <div className="form-group">
             <label className="form-label">Assegna Camera:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(140px, 1fr))`, gap: 10 }}>
               {rooms.map(room => {
                 const isSelected = roomId === room.id;
-                const isRoomA = room.id === 'room-1';
+                const accentColor = room.accentHex || '#6366f1';
                 return (
                   <button
                     key={room.id}
                     type="button"
-                    className={`btn btn-sm ${isRoomA ? (isSelected ? 'btn-outline-room1' : 'btn-secondary') : (isSelected ? 'btn-outline-room2' : 'btn-secondary')}`}
+                    className="btn btn-sm"
                     style={{ 
                       borderWidth: 2, 
-                      borderColor: isSelected ? (isRoomA ? 'var(--room1-main)' : 'var(--room2-main)') : 'var(--border-subtle)',
+                      borderColor: isSelected ? accentColor : 'var(--border-subtle)',
+                      background: isSelected ? `${accentColor}18` : 'transparent',
+                      color: isSelected ? '#ffffff' : 'var(--text-secondary)',
                       padding: '12px',
                       display: 'flex',
                       flexDirection: 'column',
@@ -143,7 +147,7 @@ export const TenantModal: FC<TenantModalProps> = ({
                     }}
                     onClick={() => handleRoomChange(room.id)}
                   >
-                    <strong style={{ fontSize: '1rem' }}>{room.name}</strong>
+                    <strong style={{ fontSize: '1rem', color: isSelected ? accentColor : '#ffffff' }}>{room.name}</strong>
                     <span style={{ fontSize: '0.74rem', opacity: 0.85 }}>Canone base €{room.defaultRent}/mese</span>
                   </button>
                 );

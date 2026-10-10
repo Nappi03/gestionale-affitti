@@ -1,22 +1,70 @@
 import { getSupabase } from '../lib/supabase';
 import type { Tenant, Payment, HouseExpense, Room } from '../types';
 
-export const ROOMS: Room[] = [
-  {
-    id: 'room-1',
-    name: 'Camera A',
-    defaultRent: 300,
-    color: 'emerald',
-    accentHex: '#10b981',
-  },
-  {
-    id: 'room-2',
-    name: 'Camera B',
-    defaultRent: 300,
-    color: 'indigo',
-    accentHex: '#6366f1',
-  },
+export const DEFAULT_ROOM_PALETTES = [
+  { color: 'emerald', accentHex: '#10b981', defaultRent: 300 },
+  { color: 'indigo', accentHex: '#6366f1', defaultRent: 300 },
+  { color: 'amber', accentHex: '#f59e0b', defaultRent: 300 },
+  { color: 'rose', accentHex: '#f43f5e', defaultRent: 300 },
+  { color: 'cyan', accentHex: '#06b6d4', defaultRent: 300 },
+  { color: 'purple', accentHex: '#a855f7', defaultRent: 300 },
+  { color: 'orange', accentHex: '#f97316', defaultRent: 300 },
+  { color: 'teal', accentHex: '#14b8a6', defaultRent: 300 },
+  { color: 'blue', accentHex: '#3b82f6', defaultRent: 300 },
+  { color: 'pink', accentHex: '#ec4899', defaultRent: 300 },
 ];
+
+export function generateRooms(count: number = 2, customRooms?: Room[]): Room[] {
+  if (customRooms && customRooms.length > 0) {
+    return customRooms;
+  }
+  const safeCount = Math.max(1, Math.min(20, Number(count) || 2));
+  const rooms: Room[] = [];
+  for (let i = 0; i < safeCount; i++) {
+    const pal = DEFAULT_ROOM_PALETTES[i % DEFAULT_ROOM_PALETTES.length];
+    const letter = String.fromCharCode(65 + i);
+    rooms.push({
+      id: `room-${i + 1}`,
+      name: `Camera ${letter}`,
+      defaultRent: pal.defaultRent,
+      color: pal.color,
+      accentHex: pal.accentHex,
+    });
+  }
+  return rooms;
+}
+
+export const ROOMS: Room[] = generateRooms(2);
+
+export function getRoomName(roomId?: string, rooms?: Room[]): string {
+  if (!roomId) return 'Camera';
+  if (rooms && rooms.length > 0) {
+    const found = rooms.find(r => r.id === roomId);
+    if (found) return found.name;
+  }
+  if (roomId.startsWith('room-')) {
+    const num = parseInt(roomId.replace('room-', ''), 10);
+    if (!isNaN(num)) {
+      return `Camera ${String.fromCharCode(64 + num)}`;
+    }
+  }
+  return roomId;
+}
+
+export function getRoomColor(roomId?: string, rooms?: Room[]): string {
+  if (!roomId) return '#818cf8';
+  if (rooms && rooms.length > 0) {
+    const found = rooms.find(r => r.id === roomId);
+    if (found) return found.accentHex;
+  }
+  if (roomId === 'room-1') return '#10b981';
+  if (roomId === 'room-2') return '#6366f1';
+  if (roomId === 'room-3') return '#f59e0b';
+  if (roomId === 'room-4') return '#f43f5e';
+  if (roomId === 'room-5') return '#06b6d4';
+  if (roomId === 'room-6') return '#a855f7';
+  return '#818cf8';
+}
 
 const LOCAL_STORAGE_TENANTS_KEY = 'domus_landlord_tenants_v3';
 const LOCAL_STORAGE_PAYMENTS_KEY = 'domus_landlord_payments_v3';

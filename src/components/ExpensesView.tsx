@@ -14,10 +14,12 @@ import {
   ChevronUp,
   RotateCcw
 } from 'lucide-react';
-import type { HouseExpense, Tenant } from '../types';
+import type { HouseExpense, Room, Tenant } from '../types';
 import { formatDate } from '../utils/dateUtils';
+import { getRoomName, getRoomColor } from '../services/storageService';
 
 interface ExpensesViewProps {
+  rooms?: Room[];
   expenses: HouseExpense[];
   tenants: Tenant[];
   onOpenNewExpenseModal: () => void;
@@ -27,6 +29,7 @@ interface ExpensesViewProps {
 }
 
 export const ExpensesView: FC<ExpensesViewProps> = ({
+  rooms = [],
   expenses,
   tenants,
   onOpenNewExpenseModal,
@@ -485,7 +488,8 @@ export const ExpensesView: FC<ExpensesViewProps> = ({
                         {splits.map(split => {
                           const tenantObj = tenants.find(t => t.id === split.tenant_id);
                           const studentPhone = tenantObj?.phone;
-                          const roomLabel = tenantObj?.room_id === 'room-1' ? 'Camera A' : (tenantObj?.room_id === 'room-2' ? 'Camera B' : '');
+                          const roomName = getRoomName(tenantObj?.room_id, rooms);
+                          const roomColor = getRoomColor(tenantObj?.room_id, rooms);
 
                           return (
                             <div 
@@ -507,9 +511,18 @@ export const ExpensesView: FC<ExpensesViewProps> = ({
                                     {split.tenant_name}
                                   </strong>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                                    {roomLabel && (
-                                      <span className={`badge ${tenantObj?.room_id === 'room-1' ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
-                                        {roomLabel}
+                                    {roomName && (
+                                      <span 
+                                        className="badge" 
+                                        style={{ 
+                                          fontSize: '0.68rem', 
+                                          padding: '1px 6px',
+                                          background: `${roomColor}20`,
+                                          color: roomColor,
+                                          border: `1px solid ${roomColor}40`
+                                        }}
+                                      >
+                                        {roomName}
                                       </span>
                                     )}
                                     {studentPhone && (

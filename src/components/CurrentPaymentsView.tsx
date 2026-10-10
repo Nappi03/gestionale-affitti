@@ -37,7 +37,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
   const today = new Date();
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonthIndex, setCurrentMonthIndex] = useState(today.getMonth()); // 0-11
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid' | 'room-1' | 'room-2'>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const monthNames = [
@@ -100,8 +100,9 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
 
     if (filterStatus === 'pending' && isPaid) return false;
     if (filterStatus === 'paid' && !isPaid) return false;
-    if (filterStatus === 'room-1' && t.room_id !== 'room-1') return false;
-    if (filterStatus === 'room-2' && t.room_id !== 'room-2') return false;
+    if (filterStatus !== 'all' && filterStatus !== 'pending' && filterStatus !== 'paid') {
+      if (t.room_id !== filterStatus) return false;
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -228,19 +229,19 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
               Saldati ({paidTenantsThisMonth.length})
             </button>
 
-            <button
-              className={`btn btn-sm ${filterStatus === 'room-1' ? 'btn-outline-room1' : 'btn-secondary'}`}
-              onClick={() => setFilterStatus('room-1')}
-            >
-              Camera A
-            </button>
-
-            <button
-              className={`btn btn-sm ${filterStatus === 'room-2' ? 'btn-outline-room2' : 'btn-secondary'}`}
-              onClick={() => setFilterStatus('room-2')}
-            >
-              Camera B
-            </button>
+            {rooms.map((r) => {
+              const isSelected = filterStatus === r.id;
+              return (
+                <button
+                  key={r.id}
+                  className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                  style={isSelected ? { background: r.accentHex, borderColor: r.accentHex, color: '#ffffff' } : {}}
+                  onClick={() => setFilterStatus(r.id)}
+                >
+                  {r.name}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Box */}
@@ -306,7 +307,6 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
             {displayedTenants.map((tenant) => {
               const payment = getTenantPaymentForMonth(tenant.id, monthKey);
               const isPaid = !!payment;
-              const isRoomA = tenant.room_id === 'room-1';
               const room = rooms.find(r => r.id === tenant.room_id);
 
               return (
@@ -318,7 +318,7 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                     borderLeft: `5px solid ${isPaid ? '#10b981' : '#f43f5e'}`,
                     background: isPaid 
                       ? 'linear-gradient(145deg, rgba(16, 185, 129, 0.05) 0%, var(--bg-card) 60%)' 
-                      : 'linear-gradient(145deg, rgba(244, 63, 94, 0.05) 0%, var(--bg-card) 60%)',
+                       : 'linear-gradient(145deg, rgba(244, 63, 94, 0.05) 0%, var(--bg-card) 60%)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -333,11 +333,9 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                           width: 44,
                           height: 44,
                           borderRadius: '50%',
-                          background: isRoomA 
-                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.05))' 
-                            : 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(99, 102, 241, 0.05))',
-                          border: `1.5px solid ${isRoomA ? 'rgba(16, 185, 129, 0.4)' : 'rgba(99, 102, 241, 0.4)'}`,
-                          color: isRoomA ? '#34d399' : '#a5b4fc',
+                          background: `${room?.accentHex || '#6366f1'}25`,
+                          border: `1.5px solid ${room?.accentHex || '#6366f1'}50`,
+                          color: room?.accentHex || '#a5b4fc',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -352,8 +350,17 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                             {tenant.name}
                           </h4>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                            <span className={`badge ${isRoomA ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.76rem', padding: '3px 10px' }}>
-                              {room ? room.name : (isRoomA ? 'Camera A' : 'Camera B')}
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                background: `${room?.accentHex || '#6366f1'}20`, 
+                                color: room?.accentHex || '#a5b4fc', 
+                                border: `1px solid ${room?.accentHex || '#6366f1'}40`,
+                                fontSize: '0.76rem', 
+                                padding: '3px 10px' 
+                              }}
+                            >
+                              {room ? room.name : 'Camera'}
                             </span>
                           </div>
                         </div>
@@ -505,9 +512,22 @@ export const CurrentPaymentsView: FC<CurrentPaymentsViewProps> = ({
                       {tenant.name}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span className={`badge ${tenant.room_id === 'room-1' ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.72rem' }}>
-                        {tenant.room_id === 'room-1' ? 'Camera A' : 'Camera B'}
-                      </span>
+                      {(() => {
+                        const rObj = rooms.find(r => r.id === tenant.room_id);
+                        return (
+                          <span 
+                            className="badge" 
+                            style={{ 
+                              background: `${rObj?.accentHex || '#6366f1'}20`, 
+                              color: rObj?.accentHex || '#a5b4fc', 
+                              border: `1px solid ${rObj?.accentHex || '#6366f1'}40`,
+                              fontSize: '0.72rem' 
+                            }}
+                          >
+                            {rObj ? rObj.name : 'Camera'}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
                       €{tenant.monthly_rent}

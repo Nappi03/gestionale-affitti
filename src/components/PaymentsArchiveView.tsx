@@ -208,7 +208,7 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
             >
               <option value="all">🚪 Tutte le Camere</option>
               {rooms.map(r => (
-                <option key={r.id} value={r.id}>{r.id === 'room-1' ? 'Camera A' : 'Camera B'}</option>
+                <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
           </div>
@@ -250,13 +250,14 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
             {studentBreakdownList.map(([name, data]) => {
-              const isRoom1 = data.roomId === 'room-1';
+              const rObj = rooms.find(r => r.id === data.roomId);
+              const roomColor = rObj?.accentHex || '#6366f1';
               return (
                 <div
                   key={name}
                   style={{
                     background: 'rgba(9, 14, 26, 0.6)',
-                    border: `1px solid ${isRoom1 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(99, 102, 241, 0.3)'}`,
+                    border: `1px solid ${roomColor}40`,
                     borderRadius: 'var(--radius-sm)',
                     padding: '12px 14px',
                   }}
@@ -264,8 +265,18 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                     <div>
                       <strong style={{ fontSize: '0.92rem', color: '#ffffff', display: 'block' }}>{name}</strong>
-                      <span className={`badge ${isRoom1 ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.68rem', padding: '1px 6px', marginTop: 3 }}>
-                        {isRoom1 ? 'Camera A' : 'Camera B'}
+                      <span 
+                        className="badge" 
+                        style={{ 
+                          fontSize: '0.68rem', 
+                          padding: '1px 6px', 
+                          marginTop: 3,
+                          background: `${roomColor}20`,
+                          color: roomColor,
+                          border: `1px solid ${roomColor}40`
+                        }}
+                      >
+                        {rObj ? rObj.name : data.roomId}
                       </span>
                     </div>
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
@@ -308,9 +319,24 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
                         {p.tenant_name}
                       </strong>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        <span className={`badge ${p.room_id === 'room-1' ? 'badge-room1' : 'badge-room2'}`} style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
-                          {p.room_id === 'room-1' ? 'Camera A' : 'Camera B'}
-                        </span>
+                        {(() => {
+                          const rObj = rooms.find(r => r.id === p.room_id);
+                          const roomColor = rObj?.accentHex || '#6366f1';
+                          return (
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                fontSize: '0.68rem', 
+                                padding: '1px 6px',
+                                background: `${roomColor}20`,
+                                color: roomColor,
+                                border: `1px solid ${roomColor}40`
+                              }}
+                            >
+                              {rObj ? rObj.name : p.room_id}
+                            </span>
+                          );
+                        })()}
                         <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           {p.month_label}
                         </span>
@@ -390,9 +416,22 @@ export const PaymentsArchiveView: FC<PaymentsArchiveViewProps> = ({
                       </td>
 
                       <td style={{ padding: '12px 14px' }}>
-                        <span className={`badge ${p.room_id === 'room-1' ? 'badge-room1' : 'badge-room2'}`}>
-                          {p.room_id === 'room-1' ? 'Camera A' : 'Camera B'}
-                        </span>
+                        {(() => {
+                          const rObj = rooms.find(r => r.id === p.room_id);
+                          const roomColor = rObj?.accentHex || '#6366f1';
+                          return (
+                            <span 
+                              className="badge"
+                              style={{
+                                background: `${roomColor}20`,
+                                color: roomColor,
+                                border: `1px solid ${roomColor}40`
+                              }}
+                            >
+                              {rObj ? rObj.name : p.room_id}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td style={{ padding: '12px 14px', textTransform: 'capitalize', color: 'var(--text-secondary)' }}>
