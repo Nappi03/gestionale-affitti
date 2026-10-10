@@ -1,7 +1,6 @@
 import { useState, useEffect, type FC } from 'react';
 import { 
   ShieldCheck, 
-  X, 
   Plus, 
   KeyRound, 
   Copy, 
@@ -12,23 +11,21 @@ import {
   Calendar, 
   Building, 
   ExternalLink, 
-  Pencil,
-  Phone,
-  MessageCircle,
-  Save
+  Pencil, 
+  Phone, 
+  MessageCircle, 
+  Save 
 } from 'lucide-react';
 import { LicenseService } from '../services/licenseService';
 import type { AppLicense } from '../types';
 
 interface AdminLicensesModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
   isFullPage?: boolean;
 }
 
 export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ 
-  isOpen, 
-  onClose,
+  isOpen = true, 
   isFullPage = false,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -239,17 +236,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button 
-            type="button" 
-            className={isFullPage ? 'btn btn-secondary btn-sm' : 'btn-icon'} 
-            onClick={onClose}
-            title={isFullPage ? 'Vai alla schermata principale' : 'Chiudi'}
-            style={isFullPage ? { fontSize: '0.78rem' } : undefined}
-          >
-            {isFullPage ? 'Chiudi Pannello' : <X size={18} />}
-          </button>
-        </div>
+
       </div>
 
       {/* Main Body */}
@@ -763,7 +750,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div 
         className="modal-content" 
         style={{ maxWidth: 880, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} 

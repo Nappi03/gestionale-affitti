@@ -24,8 +24,7 @@ function DomusRentDashboard() {
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Admin Licenses Modal state (Master Control)
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+
 
   // Modals state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -69,17 +68,12 @@ function DomusRentDashboard() {
     }
   }, [licenseKey, isGuestMode]);
 
-  // Master Admin shortcut listener & URL parameter
+  // Master Admin shortcut listener (navigazione rapida ad /?admin)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('admin') || params.has('master')) {
-      setIsAdminModalOpen(true);
-    }
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
         e.preventDefault();
-        setIsAdminModalOpen((prev) => !prev);
+        window.location.href = '/?admin';
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -201,9 +195,6 @@ function DomusRentDashboard() {
       <AdminLicensesModal
         isOpen={true}
         isFullPage={true}
-        onClose={() => {
-          window.location.href = window.location.pathname;
-        }}
       />
     );
   }
@@ -212,15 +203,7 @@ function DomusRentDashboard() {
   const isBlocked = (!license && !isGuestMode) || status === 'suspended' || status === 'expired' || status === 'not_found';
 
   if (isBlocked) {
-    return (
-      <>
-        <LicenseScreen onOpenAdminModal={() => setIsAdminModalOpen(true)} />
-        <AdminLicensesModal 
-          isOpen={isAdminModalOpen} 
-          onClose={() => setIsAdminModalOpen(false)}
-        />
-      </>
-    );
+    return <LicenseScreen />;
   }
 
   return (
@@ -232,7 +215,9 @@ function DomusRentDashboard() {
         isSupabaseConnected={isSupabaseConnected}
         onOpenNewPaymentModal={() => handleOpenPaymentModalWithContext()}
         onOpenNewTenantModal={() => handleOpenNewTenantModal()}
-        onOpenAdminLicensesModal={() => setIsAdminModalOpen(true)}
+        onOpenAdminLicensesModal={() => {
+          window.location.href = '/?admin';
+        }}
       />
 
       {/* Main Content */}
@@ -331,11 +316,6 @@ function DomusRentDashboard() {
         expenseToEdit={expenseToEdit}
       />
 
-      {/* Admin Licenses Modal (Master Control) */}
-      <AdminLicensesModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-      />
     </div>
   );
 }

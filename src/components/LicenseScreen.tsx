@@ -10,11 +10,7 @@ import {
 } from 'lucide-react';
 import { useLicense } from '../context/LicenseContext';
 
-interface LicenseScreenProps {
-  onOpenAdminModal?: () => void;
-}
-
-export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
+export const LicenseScreen: FC = () => {
   const { license, status } = useLicense();
 
   // --- STATO 1: LICENZA SOSPESA O SCADUTA (KILL SWITCH) ---
@@ -138,7 +134,9 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
             marginBottom: 16,
             cursor: 'default',
           }}
-          onDoubleClick={onOpenAdminModal}
+          onDoubleClick={() => {
+            window.location.href = '/?admin';
+          }}
         >
           <Building2 size={30} />
         </div>
