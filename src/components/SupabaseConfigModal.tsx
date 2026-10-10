@@ -14,7 +14,8 @@ import {
   getSupabaseConfig, 
   saveSupabaseConfig, 
   resetSupabaseClient, 
-  SUPABASE_SQL_SCHEMA 
+  SUPABASE_SQL_SCHEMA,
+  SUPABASE_MIGRATION_SQL
 } from '../lib/supabase';
 import { StorageService } from '../services/storageService';
 
@@ -31,6 +32,7 @@ export const SupabaseConfigModal: FC<SupabaseConfigModalProps> = ({
   const [testing, setTesting] = useState(false);
   const [statusResult, setStatusResult] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [sqlTab, setSqlTab] = useState<'migration' | 'full'>('migration');
 
   const handleTestAndSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +58,8 @@ export const SupabaseConfigModal: FC<SupabaseConfigModalProps> = ({
   };
 
   const copySql = () => {
-    navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
+    const textToCopy = sqlTab === 'migration' ? SUPABASE_MIGRATION_SQL : SUPABASE_SQL_SCHEMA;
+    navigator.clipboard.writeText(textToCopy);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2000);
   };
@@ -177,7 +180,7 @@ export const SupabaseConfigModal: FC<SupabaseConfigModalProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Terminal size={20} color="#818cf8" />
-            <h3 style={{ fontSize: '1.15rem' }}>Schema SQL Tabelle Supabase</h3>
+            <h3 style={{ fontSize: '1.15rem' }}>SQL Multi-Tenant & Tabelle</h3>
           </div>
 
           <button 
@@ -190,8 +193,62 @@ export const SupabaseConfigModal: FC<SupabaseConfigModalProps> = ({
           </button>
         </div>
 
+        {/* Tab switcher: Migration vs Full */}
+        <div style={{
+          display: 'flex',
+          gap: 6,
+          marginBottom: 12,
+          background: 'rgba(9, 14, 26, 0.6)',
+          padding: 4,
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--border-subtle)',
+        }}>
+          <button
+            type="button"
+            onClick={() => setSqlTab('migration')}
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              background: sqlTab === 'migration' ? 'var(--bg-card)' : 'transparent',
+              color: sqlTab === 'migration' ? '#ffffff' : 'var(--text-secondary)',
+            }}
+          >
+            1. Aggiornamento Multi-Tenant (Consigliato)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSqlTab('full')}
+            style={{
+              flex: 1,
+              padding: '6px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              cursor: 'pointer',
+              background: sqlTab === 'full' ? 'var(--bg-card)' : 'transparent',
+              color: sqlTab === 'full' ? '#ffffff' : 'var(--text-secondary)',
+            }}
+          >
+            2. Schema Completo da Zero
+          </button>
+        </div>
+
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: 12 }}>
-          Esegui questo script nel <strong>SQL Editor</strong> del tuo progetto su Supabase per creare le tabelle <code>bookings</code> ed <code>expenses</code> con le relative autorizzazioni:
+          {sqlTab === 'migration' ? (
+            <>
+              Esegui questo script nel <strong>SQL Editor</strong> per attivare l'isolamento dei dati tra proprietari tramite <code>user_id</code> e le nuove policy RLS.
+            </>
+          ) : (
+            <>
+              Esegui questo script da zero se stai creando un nuovo database Supabase da capo per creare le tabelle e le policy di sicurezza.
+            </>
+          )}
         </p>
 
         <pre style={{ 
@@ -207,7 +264,7 @@ export const SupabaseConfigModal: FC<SupabaseConfigModalProps> = ({
           lineHeight: 1.4,
           flex: 1
         }}>
-          {SUPABASE_SQL_SCHEMA}
+          {sqlTab === 'migration' ? SUPABASE_MIGRATION_SQL : SUPABASE_SQL_SCHEMA}
         </pre>
 
         <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>

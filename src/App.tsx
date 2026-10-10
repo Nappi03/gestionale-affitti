@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthScreen } from './components/AuthScreen';
 import { Navbar, type NavTab } from './components/Navbar';
 import { CurrentPaymentsView } from './components/CurrentPaymentsView';
 import { TenantsManager } from './components/TenantsManager';
@@ -12,7 +14,8 @@ import { ExpenseModal } from './components/ExpenseModal';
 import { StorageService, ROOMS } from './services/storageService';
 import type { Tenant, Payment, HouseExpense, Room, RoomId } from './types';
 
-export function App() {
+function DomusRentDashboard() {
+  const { user, isGuestMode, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTab>('payments_status');
   const [rooms] = useState<Room[]>(ROOMS);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -57,8 +60,11 @@ export function App() {
   };
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (user || isGuestMode) {
+      setLoading(true);
+      loadAllData();
+    }
+  }, [user?.id, isGuestMode]);
 
   // --- Handlers: Payments ---
   const handleSavePayment = async (payment: Payment) => {
@@ -147,6 +153,28 @@ export function App() {
     await StorageService.deleteExpense(expenseId);
     setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
   };
+
+  if (authLoading) {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15) 0%, transparent 60%), var(--bg-app)',
+        color: 'var(--text-secondary)',
+        flexDirection: 'column',
+        gap: 16,
+      }}>
+        <div className="status-dot connected" style={{ width: 14, height: 14 }} />
+        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#e2e8f0' }}>Caricamento DomusRent...</span>
+      </div>
+    );
+  }
+
+  if (!user && !isGuestMode) {
+    return <AuthScreen />;
+  }
 
   return (
     <div className="app-container">
@@ -262,6 +290,14 @@ export function App() {
         expenseToEdit={expenseToEdit}
       />
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <DomusRentDashboard />
+    </AuthProvider>
   );
 }
 

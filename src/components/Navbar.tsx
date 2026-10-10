@@ -6,8 +6,11 @@ import {
   History, 
   Receipt, 
   PlusCircle, 
-  UserPlus
+  UserPlus,
+  LogOut,
+  Sparkles
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export type NavTab = 'payments_status' | 'tenants' | 'archive' | 'expenses' | 'supabase';
 
@@ -28,6 +31,8 @@ export const Navbar: FC<NavbarProps> = ({
   onOpenNewTenantModal,
   onOpenSupabaseModal,
 }) => {
+  const { user, signOut, isGuestMode, exitGuestMode } = useAuth();
+
   return (
     <header className="navbar">
       <div className="nav-header-row">
@@ -53,7 +58,7 @@ export const Navbar: FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons & Account */}
         <div className="nav-actions">
           {/* Quick Record Payment */}
           <button 
@@ -78,10 +83,42 @@ export const Navbar: FC<NavbarProps> = ({
             <span className="btn-text-full">+ Aggiungi Ragazzo</span>
             <span className="btn-text-short">+ Studente</span>
           </button>
+
+          {/* User Account / Logout / Demo indicator */}
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="user-email-badge" title={user.email || ''}>
+                {user.email}
+              </span>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Vuoi uscire dall'account ${user.email}?`)) {
+                    signOut();
+                  }
+                }}
+                className="btn btn-secondary btn-icon btn-sm"
+                title={`Connesso come: ${user.email}\nClicca per uscire`}
+                style={{ width: 34, height: 34, padding: 0 }}
+              >
+                <LogOut size={15} color="#fb7185" />
+              </button>
+            </div>
+          ) : isGuestMode ? (
+            <button
+              onClick={exitGuestMode}
+              className="btn btn-secondary btn-sm"
+              title="Esci dalla modalità demo e accedi con account"
+              style={{ padding: '5px 8px', fontSize: '0.72rem', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
+            >
+              <Sparkles size={13} />
+              <span className="btn-text-full">Demo (Accedi)</span>
+              <span className="btn-text-short">Accedi</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Navigation Tabs - Horizontally scrollable on mobile */}
+      {/* Navigation Tabs */}
       <div className="nav-tabs-wrapper">
         <nav className="nav-tabs">
           <button
@@ -89,7 +126,7 @@ export const Navbar: FC<NavbarProps> = ({
             className={`nav-tab-btn ${activeTab === 'payments_status' ? 'active' : ''}`}
             onClick={() => onTabChange('payments_status')}
           >
-            <CreditCard size={17} />
+            <CreditCard size={16} />
             <span className="tab-label-full">Chi ha Pagato? (Mese per Mese)</span>
             <span className="tab-label-short">Pagamenti</span>
           </button>

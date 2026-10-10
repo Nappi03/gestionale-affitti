@@ -330,6 +330,26 @@ button, input, select, textarea {
   gap: 12px;
 }
 
+.user-email-badge {
+  display: inline-block;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .user-email-badge {
+    display: none !important;
+  }
+}
+
 /* Sub-nav tabs */
 .nav-tabs-wrapper {
   max-width: 1440px;
