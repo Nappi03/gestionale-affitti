@@ -27,6 +27,7 @@ function DomusRentDashboard() {
 
   // Admin Licenses Modal state (Master Control)
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
 
   // Modals state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -193,14 +194,65 @@ function DomusRentDashboard() {
     );
   }
 
-  // Se non c'è una licenza valida o la licenza è sospesa/scaduta, mostra la schermata di blocco o di inserimento chiave
+  // 1. Accesso Amministratore dedicato via link (?admin / ?master / ?gestione)
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const isAdminRoute = urlParams.has('admin') || urlParams.has('master') || urlParams.has('gestione') || status === 'admin';
+
+  if (isAdminRoute) {
+    return (
+      <>
+        <AdminLicensesModal
+          isOpen={true}
+          isFullPage={true}
+          onClose={() => {
+            window.location.href = window.location.pathname;
+          }}
+          onOpenSupabaseConfig={() => setIsSupabaseModalOpen(true)}
+        />
+        {isSupabaseModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsSupabaseModalOpen(false)}>
+            <div 
+              className="modal-content" 
+              style={{ maxWidth: 760, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
+                <button className="btn-icon" onClick={() => setIsSupabaseModalOpen(false)}>✕</button>
+              </div>
+              <SupabaseConfigModal onConnectionStatusChanged={loadAllData} />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // 2. Se non c'è una licenza valida o la licenza è sospesa/scaduta, mostra la schermata riservata
   const isBlocked = (!license && !isGuestMode) || status === 'suspended' || status === 'expired' || status === 'not_found';
 
   if (isBlocked) {
     return (
       <>
         <LicenseScreen onOpenAdminModal={() => setIsAdminModalOpen(true)} />
-        <AdminLicensesModal isOpen={isAdminModalOpen} onClose={() => setIsAdminModalOpen(false)} />
+        <AdminLicensesModal 
+          isOpen={isAdminModalOpen} 
+          onClose={() => setIsAdminModalOpen(false)}
+          onOpenSupabaseConfig={() => setIsSupabaseModalOpen(true)}
+        />
+        {isSupabaseModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsSupabaseModalOpen(false)}>
+            <div 
+              className="modal-content" 
+              style={{ maxWidth: 760, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
+                <button className="btn-icon" onClick={() => setIsSupabaseModalOpen(false)}>✕</button>
+              </div>
+              <SupabaseConfigModal onConnectionStatusChanged={loadAllData} />
+            </div>
+          </div>
+        )}
       </>
     );
   }

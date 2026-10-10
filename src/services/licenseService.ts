@@ -78,36 +78,6 @@ export class LicenseService {
       return { valid: false, status: 'not_found', message: 'Nessuna chiave licenza specificata.' };
     }
 
-    // Licenza Demo di sistema
-    if (key === 'DEMO' || key === 'DOMUS-DEMO') {
-      return {
-        valid: true,
-        status: 'demo',
-        license: {
-          id: 'demo-license-id',
-          license_key: 'DOMUS-DEMO',
-          client_name: 'Visitatore Demo',
-          property_name: 'Demo 2 Camere (Test)',
-          is_active: true,
-        },
-      };
-    }
-
-    // Master Admin Key
-    if (key === 'DOMUS-ADMIN' || key === 'ADMIN') {
-      return {
-        valid: true,
-        status: 'admin',
-        license: {
-          id: 'admin-license-id',
-          license_key: 'DOMUS-ADMIN',
-          client_name: 'Amministratore Master',
-          property_name: 'Pannello di Controllo Completo',
-          is_active: true,
-        },
-      };
-    }
-
     const all = await this.getLicenses();
     const found = all.find((l) => l.license_key.toUpperCase() === key);
 

@@ -45,10 +45,12 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
         setIsGuestMode(false);
         return true;
       } else {
+        localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
         setErrorMessage(res.message || 'Licenza non valida.');
         return false;
       }
     } catch (e: any) {
+      localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
       setErrorMessage(e.message || 'Errore durante la verifica della licenza.');
       return false;
     }
@@ -60,8 +62,8 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const urlParams = new URLSearchParams(window.location.search);
       const urlKey = urlParams.get('licenza') || urlParams.get('key') || urlParams.get('license');
 
-      if (urlParams.has('admin') || urlParams.has('master')) {
-        await checkLicense('DOMUS-ADMIN');
+      if (urlParams.has('admin') || urlParams.has('master') || urlParams.has('gestione')) {
+        setStatus('admin');
         setLoading(false);
         return;
       }
@@ -75,9 +77,14 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
       // 2. Controlla chiave salvata precedentemente in localStorage
       const savedKey = localStorage.getItem(STORAGE_KEY_ACTIVE_LICENSE);
       if (savedKey) {
-        await checkLicense(savedKey);
-        setLoading(false);
-        return;
+        if (savedKey.toUpperCase() === 'ADMIN' || savedKey.toUpperCase() === 'DOMUS-ADMIN') {
+          // Rimuovi vecchie chiavi backdoor da localStorage
+          localStorage.removeItem(STORAGE_KEY_ACTIVE_LICENSE);
+        } else {
+          await checkLicense(savedKey);
+          setLoading(false);
+          return;
+        }
       }
 
       // 3. Controlla modalità demo salvata
@@ -134,7 +141,7 @@ export const LicenseProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const isAdmin = status === 'admin' || licenseKey === 'DOMUS-ADMIN' || licenseKey === 'ADMIN';
+  const isAdmin = status === 'admin';
 
   return (
     <LicenseContext.Provider

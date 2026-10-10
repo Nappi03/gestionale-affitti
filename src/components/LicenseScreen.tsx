@@ -1,14 +1,12 @@
-import { useState, type FC } from 'react';
+import type { FC } from 'react';
 import { 
   Building2, 
-  KeyRound, 
-  ArrowRight, 
   ShieldAlert, 
-  Receipt, 
-  CheckCircle2, 
   MessageCircle,
-  RefreshCw,
-  ShieldCheck
+  Lock,
+  CheckCircle2,
+  Receipt,
+  Users
 } from 'lucide-react';
 import { useLicense } from '../context/LicenseContext';
 
@@ -17,39 +15,9 @@ interface LicenseScreenProps {
 }
 
 export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
-  const { 
-    license, 
-    status, 
-    errorMessage, 
-    loginWithKey
-  } = useLicense();
+  const { license, status } = useLicense();
 
-  const [inputKey, setInputKey] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLocalError(null);
-
-    const clean = inputKey.trim().toUpperCase();
-    if (!clean) {
-      setLocalError('Inserisci una chiave licenza valida.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await loginWithKey(clean);
-      if (!res.success && res.error) {
-        setLocalError(res.error);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // --- STATO KILL SWITCH: LICENZA SOSPESA O SCADUTA ---
+  // --- STATO 1: LICENZA SOSPESA O SCADUTA (KILL SWITCH) ---
   const isSuspendedOrExpired = status === 'suspended' || status === 'expired';
 
   if (isSuspendedOrExpired) {
@@ -110,9 +78,8 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
           </p>
 
           <div>
-            {/* Pulsante Contatto WhatsApp / Supporto */}
             <a
-              href="https://wa.me/?text=Buongiorno,%20vorrei%20rinnovare%20la%20mia%20licenza%20DomusRent."
+              href="https://wa.me/?text=Buongiorno,%20vorrei%20riattivare%20la%20mia%20licenza%20DomusRent."
               target="_blank"
               rel="noreferrer"
               className="btn btn-primary"
@@ -135,7 +102,7 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
     );
   }
 
-  // --- STATO NORMALE: SCHERMATA ACCESSO CON CHIAVE LICENZA ---
+  // --- STATO 2: VISITA AL SITO SENZA LINK O LICENZA (ACCESSO RISERVATO) ---
   return (
     <div style={{
       minHeight: '100dvh',
@@ -148,127 +115,117 @@ export const LicenseScreen: FC<LicenseScreenProps> = ({ onOpenAdminModal }) => {
       <div style={{
         width: '100%',
         maxWidth: 440,
-        background: 'rgba(14, 22, 38, 0.88)',
+        background: 'rgba(14, 22, 38, 0.9)',
         backdropFilter: 'blur(20px)',
         border: '1px solid var(--border-medium)',
         borderRadius: 'var(--radius-xl)',
-        padding: '34px 26px',
+        padding: '38px 28px',
         boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)',
+        textAlign: 'center',
       }}>
         {/* Brand */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div 
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
-              marginBottom: 12,
-              cursor: 'pointer',
-            }}
-            onDoubleClick={onOpenAdminModal}
-            title="DomusRent"
-          >
-            <Building2 size={28} />
-          </div>
-
-          <h1 style={{ fontSize: '1.65rem', color: '#ffffff', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            DomusRent
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', marginTop: 4 }}>
-            Accesso Riservato Proprietari Immobiliari
-          </p>
+        <div 
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 'var(--radius-md)',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
+            marginBottom: 16,
+            cursor: 'default',
+          }}
+          onDoubleClick={onOpenAdminModal}
+        >
+          <Building2 size={30} />
         </div>
 
-        {/* Error notification */}
-        {(localError || errorMessage) && (
-          <div style={{
-            background: 'rgba(244, 63, 94, 0.14)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '11px 14px',
-            marginBottom: 18,
-            color: '#fb7185',
-            fontSize: '0.82rem',
-            lineHeight: 1.4,
-          }}>
-            {localError || errorMessage}
-          </div>
-        )}
+        <h1 style={{ fontSize: '1.65rem', color: '#ffffff', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 6 }}>
+          DomusRent
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: 20 }}>
+          Piattaforma Gestionale per Affitti & Stanze
+        </p>
 
-        {/* License form */}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group" style={{ marginBottom: 20 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
-              <span>Chiave Licenza Immobile</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Fornita dall'amministratore</span>
-            </label>
-            <div style={{ position: 'relative' }}>
-              <KeyRound size={17} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
-              <input
-                type="text"
-                className="form-input"
-                style={{ paddingLeft: 38, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}
-                placeholder="ES: DOMUS-CLIENTE"
-                value={inputKey}
-                onChange={(e) => setInputKey(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-            <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: 5, display: 'block' }}>
-              Usa il link personalizzato ricevuto per accedere direttamente.
-            </span>
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '12px', fontSize: '0.92rem', justifyContent: 'center' }}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" />
-                <span>Verifica Licenza in corso...</span>
-              </>
-            ) : (
-              <>
-                <span>Entra nel Gestionale</span>
-                <ArrowRight size={16} />
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Highlights */}
+        {/* Access Restricted Notice */}
         <div style={{
-          marginTop: 24,
-          paddingTop: 18,
-          borderTop: '1px solid var(--border-subtle)',
+          background: 'rgba(99, 102, 241, 0.08)',
+          border: '1px solid rgba(99, 102, 241, 0.25)',
+          borderRadius: 'var(--radius-md)',
+          padding: '16px 14px',
+          marginBottom: 24,
+          textAlign: 'left',
+          display: 'flex',
+          gap: 12,
+        }}>
+          <Lock size={20} color="#818cf8" style={{ flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <strong style={{ color: '#ffffff', fontSize: '0.86rem', display: 'block', marginBottom: 4 }}>
+              Accesso Riservato su Invito
+            </strong>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
+              Questa piattaforma è accessibile esclusivamente tramite il link personale fornito dall'amministratore. Se sei un proprietario, utilizza il link diretto che hai ricevuto per gestire il tuo immobile.
+            </p>
+          </div>
+        </div>
+
+        {/* Feature Highlights */}
+        <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 7,
-          fontSize: '0.76rem',
+          gap: 9,
+          fontSize: '0.78rem',
           color: 'var(--text-secondary)',
+          textAlign: 'left',
+          marginBottom: 24,
+          padding: '0 6px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <CheckCircle2 size={14} color="#10b981" />
-            <span>Nessuna registrazione o password da ricordare</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CheckCircle2 size={15} color="#10b981" />
+            <span>Controllo canoni & insoluti mese per mese</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <Receipt size={14} color="#818cf8" />
-            <span>Ripartizione bollette e solleciti WhatsApp in 1 click</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Receipt size={15} color="#818cf8" />
+            <span>Ripartizione bollette con quote studenti</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <ShieldCheck size={14} color="#38bdf8" />
-            <span>Dati salvati in cloud privati con crittografia</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={15} color="#38bdf8" />
+            <span>Solleciti WhatsApp automatici in 1 click</span>
           </div>
+        </div>
+
+        {/* Contact WhatsApp */}
+        <a
+          href="https://wa.me/?text=Buongiorno,%20vorrei%20informazioni%20su%20DomusRent."
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn-secondary"
+          style={{ width: '100%', padding: '11px', justifyContent: 'center', fontSize: '0.86rem', gap: 8 }}
+        >
+          <MessageCircle size={16} />
+          <span>Richiedi Accesso o Informazioni</span>
+        </a>
+
+        {/* Discreet Admin Link */}
+        <div style={{ marginTop: 18 }}>
+          <a
+            href="/?admin"
+            style={{
+              fontSize: '0.73rem',
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              opacity: 0.65,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <Lock size={12} />
+            <span>Accesso Amministratore</span>
+          </a>
         </div>
       </div>
     </div>

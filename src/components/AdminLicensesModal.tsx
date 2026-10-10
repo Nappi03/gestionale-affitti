@@ -10,7 +10,10 @@ import {
   Trash2, 
   Lock, 
   Calendar,
-  Building
+  Building,
+  ExternalLink,
+  LogOut,
+  Database
 } from 'lucide-react';
 import { LicenseService } from '../services/licenseService';
 import type { AppLicense } from '../types';
@@ -18,10 +21,19 @@ import type { AppLicense } from '../types';
 interface AdminLicensesModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isFullPage?: boolean;
+  onOpenSupabaseConfig?: () => void;
 }
 
-export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ isOpen, onClose }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ 
+  isOpen, 
+  onClose,
+  isFullPage = false,
+  onOpenSupabaseConfig,
+}) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('domus_admin_pin_auth') === 'true';
+  });
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
 
@@ -58,13 +70,20 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ isOpen, onClos
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === MASTER_PIN || pinInput.toUpperCase() === 'DOMUS-ADMIN') {
+    if (pinInput === MASTER_PIN) {
       setIsAuthenticated(true);
+      sessionStorage.setItem('domus_admin_pin_auth', 'true');
       setPinError(false);
       loadLicenses();
     } else {
       setPinError(true);
     }
+  };
+
+  const handleLock = () => {
+    sessionStorage.removeItem('domus_admin_pin_auth');
+    setIsAuthenticated(false);
+    setPinInput('');
   };
 
   const handleClientNameChange = (val: string) => {
@@ -127,68 +146,136 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
+  const content = (
+    <>
+      {/* Header */}
       <div 
-        className="modal-content" 
-        style={{ maxWidth: 740, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} 
-        onClick={(e) => e.stopPropagation()}
+        className={isFullPage ? '' : 'modal-header'} 
+        style={isFullPage ? { 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: 28,
+          paddingBottom: 18,
+          borderBottom: '1px solid var(--border-subtle)',
+          flexWrap: 'wrap',
+          gap: 14,
+        } : undefined}
       >
-        {/* Header */}
-        <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-            }}>
-              <ShieldCheck size={20} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Pannello Amministratore Licenze</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', margin: 0 }}>
-                Controllo accessi clienti, generazione link e Kill Switch
-              </p>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 42,
+            height: 42,
+            borderRadius: 'var(--radius-md)',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            boxShadow: '0 6px 16px rgba(99, 102, 241, 0.3)',
+          }}>
+            <ShieldCheck size={24} />
           </div>
-          <button className="btn-icon" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: isFullPage ? '1.35rem' : '1.2rem', margin: 0, fontWeight: 800 }}>
+                Pannello Amministratore DomusRent
+              </h2>
+              <span style={{
+                fontSize: '0.68rem',
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-full)',
+                background: 'rgba(99, 102, 241, 0.2)',
+                color: '#a5b4fc',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                border: '1px solid rgba(99, 102, 241, 0.35)',
+              }}>
+                MASTER
+              </span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, marginTop: 2 }}>
+              Gestione licenze clienti, generazione link diretti e Kill Switch
+            </p>
+          </div>
         </div>
 
-        {/* Content */}
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
-          {!isAuthenticated ? (
-            /* PIN Protection */
-            <form onSubmit={handlePinSubmit} style={{ maxWidth: 360, margin: '20px auto', textAlign: 'center' }}>
-              <div style={{
-                width: 50,
-                height: 50,
-                borderRadius: '50%',
-                background: 'rgba(99, 102, 241, 0.15)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#818cf8',
-                marginBottom: 14,
-              }}>
-                <Lock size={24} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: 6 }}>Accesso Master Riservato</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 18 }}>
-                Inserisci il PIN amministratore per accedere al pannello di vendita e blocco licenze (PIN predefinito: <code>1234</code>)
-              </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isAuthenticated && onOpenSupabaseConfig && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onOpenSupabaseConfig}
+              title="Configura connessione database Supabase"
+              style={{ fontSize: '0.78rem', gap: 6 }}
+            >
+              <Database size={14} />
+              <span>Database Cloud</span>
+            </button>
+          )}
 
+          {isAuthenticated && (
+            <button 
+              type="button" 
+              className="btn btn-secondary btn-sm" 
+              onClick={handleLock}
+              title="Blocca sessione amministratore"
+              style={{ fontSize: '0.78rem', gap: 5 }}
+            >
+              <LogOut size={14} />
+              <span>Blocca PIN</span>
+            </button>
+          )}
+
+          <button 
+            type="button" 
+            className={isFullPage ? 'btn btn-secondary btn-sm' : 'btn-icon'} 
+            onClick={onClose}
+            title={isFullPage ? 'Vai alla schermata principale' : 'Chiudi'}
+            style={isFullPage ? { fontSize: '0.78rem' } : undefined}
+          >
+            {isFullPage ? 'Chiudi' : <X size={18} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Body */}
+      <div style={isFullPage ? undefined : { padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+        {!isAuthenticated ? (
+          /* PIN Protection */
+          <div style={{
+            maxWidth: 380,
+            margin: isFullPage ? '40px auto' : '20px auto',
+            textAlign: 'center',
+            padding: isFullPage ? '32px 24px' : undefined,
+            background: isFullPage ? 'rgba(17, 24, 39, 0.7)' : undefined,
+            borderRadius: isFullPage ? 'var(--radius-lg)' : undefined,
+            border: isFullPage ? '1px solid var(--border-medium)' : undefined,
+          }}>
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'rgba(99, 102, 241, 0.15)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#818cf8',
+              marginBottom: 16,
+            }}>
+              <Lock size={26} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: 6, fontWeight: 700 }}>Accesso Master Riservato</h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.45 }}>
+              Inserisci il PIN amministratore per accedere al controllo clienti e licenze.
+            </p>
+
+            <form onSubmit={handlePinSubmit}>
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <input
                   type="password"
                   className="form-input"
-                  style={{ textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.2rem', fontWeight: 700 }}
+                  style={{ textAlign: 'center', letterSpacing: '0.25em', fontSize: '1.25rem', fontWeight: 700 }}
                   placeholder="••••"
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
@@ -196,229 +283,317 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ isOpen, onClos
                   required
                 />
                 {pinError && (
-                  <span style={{ fontSize: '0.75rem', color: '#fb7185', marginTop: 4, display: 'block' }}>
-                    PIN errato. Riprova.
+                  <span style={{ fontSize: '0.75rem', color: '#fb7185', marginTop: 6, display: 'block' }}>
+                    PIN errato. Riprova (PIN predefinito: <code>1234</code>).
                   </span>
                 )}
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '11px' }}>
                 Sblocca Pannello
               </button>
             </form>
-          ) : (
-            /* Main Admin Interface */
-            <div>
-              {/* Action Toolbar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffffff' }}>
-                    Clienti & Licenze Attive ({licenses.length})
-                  </span>
+          </div>
+        ) : (
+          /* Main Admin Interface */
+          <div>
+            {/* Quick Stats */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 12,
+              marginBottom: 24,
+            }}>
+              <div className="glass-card" style={{ padding: '14px 16px' }}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Totale Licenze
+                </span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', marginTop: 4 }}>
+                  {licenses.length}
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                >
-                  <Plus size={15} />
-                  <span>{showCreateForm ? 'Annulla' : '+ Nuova Licenza Cliente'}</span>
-                </button>
               </div>
 
-              {/* Create License Form */}
-              {showCreateForm && (
-                <form 
-                  onSubmit={handleCreateLicense} 
-                  className="glass-card" 
-                  style={{ padding: 18, marginBottom: 24, border: '1px solid rgba(99, 102, 241, 0.4)' }}
-                >
-                  <h4 style={{ fontSize: '0.95rem', marginBottom: 14, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <KeyRound size={16} />
-                    <span>Crea Nuova Licenza per un Cliente</span>
-                  </h4>
+              <div className="glass-card" style={{ padding: '14px 16px' }}>
+                <span style={{ fontSize: '0.74rem', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Licenze Attive
+                </span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+                  {licenses.filter((l) => l.is_active).length}
+                </div>
+              </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Nome Proprietario / Cliente *</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Es: Mario Rossi"
-                        value={newClientName}
-                        onChange={(e) => handleClientNameChange(e.target.value)}
-                        required
-                      />
-                    </div>
+              <div className="glass-card" style={{ padding: '14px 16px' }}>
+                <span style={{ fontSize: '0.74rem', color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Sospese (Kill Switch)
+                </span>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444', marginTop: 4 }}>
+                  {licenses.filter((l) => !l.is_active).length}
+                </div>
+              </div>
+            </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Nome Immobile</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Es: Appartamento Via Roma (2 Camere)"
-                        value={newPropertyName}
-                        onChange={(e) => setNewPropertyName(e.target.value)}
-                      />
-                    </div>
+            {/* Action Toolbar */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: 16,
+              flexWrap: 'wrap',
+              gap: 12,
+            }}>
+              <div>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#ffffff' }}>
+                  Elenco Clienti & Immobili ({licenses.length})
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setShowCreateForm(!showCreateForm)}
+              >
+                <Plus size={15} />
+                <span>{showCreateForm ? 'Annulla' : '+ Nuova Licenza Cliente'}</span>
+              </button>
+            </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Chiave Licenza Univoca *</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Es: DOMUS-ROSSI"
-                        style={{ textTransform: 'uppercase', fontWeight: 600 }}
-                        value={newLicenseKey}
-                        onChange={(e) => setNewLicenseKey(e.target.value.toUpperCase())}
-                        required
-                      />
-                    </div>
+            {/* Create License Form */}
+            {showCreateForm && (
+              <form 
+                onSubmit={handleCreateLicense} 
+                className="glass-card" 
+                style={{ padding: 20, marginBottom: 24, border: '1px solid rgba(99, 102, 241, 0.45)' }}
+              >
+                <h4 style={{ fontSize: '0.96rem', marginBottom: 14, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <KeyRound size={17} />
+                  <span>Crea Nuova Licenza per un Proprietario</span>
+                </h4>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.78rem' }}>Scadenza Periodo (Opzionale)</label>
-                      <input
-                        type="date"
-                        className="form-input"
-                        value={newExpiresAt}
-                        onChange={(e) => setNewExpiresAt(e.target.value)}
-                      />
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Nome Proprietario / Cliente *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Es: Mario Rossi"
+                      value={newClientName}
+                      onChange={(e) => handleClientNameChange(e.target.value)}
+                      required
+                      autoFocus
+                    />
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setShowCreateForm(false)}
-                    >
-                      Annulla
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-primary btn-sm"
-                      disabled={creating}
-                    >
-                      {creating ? 'Creazione in corso...' : 'Salva & Attiva Licenza'}
-                    </button>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Nome Immobile</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Es: Appartamento Via Roma (2 Camere)"
+                      value={newPropertyName}
+                      onChange={(e) => setNewPropertyName(e.target.value)}
+                    />
                   </div>
-                </form>
-              )}
 
-              {/* License List */}
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-secondary)' }}>
-                  Caricamento licenze...
-                </div>
-              ) : licenses.length === 0 ? (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '36px 16px',
-                  background: 'rgba(255,255,255,0.02)',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px dashed var(--border-subtle)',
-                }}>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', margin: 0 }}>
-                    Nessuna licenza cliente ancora creata. Clicca su <strong>"+ Nuova Licenza Cliente"</strong> per attivare il tuo primo cliente.
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {licenses.map((lic) => {
-                    const isCopied = copiedKey === lic.license_key;
-                    return (
-                      <div
-                        key={lic.id}
-                        className="glass-card"
-                        style={{
-                          padding: '14px 18px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 16,
-                          borderLeft: `4px solid ${lic.is_active ? '#10b981' : '#ef4444'}`,
-                        }}
-                      >
-                        {/* Info Client */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                            <strong style={{ fontSize: '0.95rem', color: '#ffffff' }}>{lic.client_name}</strong>
-                            <span style={{
-                              fontSize: '0.72rem',
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              background: lic.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                              color: lic.is_active ? '#34d399' : '#f87171',
-                              fontWeight: 600,
-                              border: `1px solid ${lic.is_active ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-                            }}>
-                              {lic.is_active ? '🟢 ATTIVO' : '🔴 SOSPESO (KILL SWITCH)'}
-                            </span>
-                          </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Chiave Licenza Univoca *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Es: DOMUS-ROSSI"
+                      style={{ textTransform: 'uppercase', fontWeight: 600 }}
+                      value={newLicenseKey}
+                      onChange={(e) => setNewLicenseKey(e.target.value.toUpperCase())}
+                      required
+                    />
+                  </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 4, flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <Building size={13} />
-                              {lic.property_name || 'Appartamento 2 Camere'}
-                            </span>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <KeyRound size={13} />
-                              <code>{lic.license_key}</code>
-                            </span>
-                            {lic.expires_at && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                <Calendar size={13} />
-                                Scadenza: {lic.expires_at}
-                              </span>
-                            )}
-                          </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Scadenza Periodo (Opzionale)</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={newExpiresAt}
+                      onChange={(e) => setNewExpiresAt(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setShowCreateForm(false)}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={creating}
+                  >
+                    {creating ? 'Creazione in corso...' : 'Salva & Attiva Licenza'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* License List */}
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-secondary)' }}>
+                Caricamento licenze in corso...
+              </div>
+            ) : licenses.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 16px',
+                background: 'rgba(255,255,255,0.02)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--border-subtle)',
+              }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', margin: 0 }}>
+                  Nessuna licenza cliente ancora creata. Clicca su <strong>"+ Nuova Licenza Cliente"</strong> per attivare il tuo primo cliente.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {licenses.map((lic) => {
+                  const isCopied = copiedKey === lic.license_key;
+                  const clientDirectUrl = `${window.location.origin}/?licenza=${encodeURIComponent(lic.license_key)}`;
+
+                  return (
+                    <div
+                      key={lic.id}
+                      className="glass-card"
+                      style={{
+                        padding: '16px 18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 16,
+                        borderLeft: `4px solid ${lic.is_active ? '#10b981' : '#ef4444'}`,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {/* Info Client */}
+                      <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <strong style={{ fontSize: '0.98rem', color: '#ffffff' }}>{lic.client_name}</strong>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: lic.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: lic.is_active ? '#34d399' : '#f87171',
+                            fontWeight: 700,
+                            border: `1px solid ${lic.is_active ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                          }}>
+                            {lic.is_active ? '🟢 ATTIVO' : '🔴 SOSPESO (KILL SWITCH)'}
+                          </span>
                         </div>
 
-                        {/* Actions */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                          {/* Copy Link Button */}
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => copyClientDirectLink(lic.license_key)}
-                            title="Copia link magico diretto da inviare al cliente su WhatsApp"
-                            style={{ fontSize: '0.76rem', gap: 5 }}
-                          >
-                            {isCopied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                            <span>{isCopied ? 'Link Copiato!' : 'Copia Link Cliente'}</span>
-                          </button>
-
-                          {/* Kill Switch Toggle Button */}
-                          <button
-                            type="button"
-                            className={`btn btn-sm ${lic.is_active ? 'btn-danger' : 'btn-success'}`}
-                            onClick={() => handleToggleKillSwitch(lic)}
-                            title={lic.is_active ? 'Sospendi accesso per mancato pagamento' : 'Riattiva accesso al gestionale'}
-                            style={{ fontSize: '0.76rem', padding: '6px 10px', gap: 5 }}
-                          >
-                            <Power size={14} />
-                            <span>{lic.is_active ? 'Sospendi (Kill)' : 'Riattiva'}</span>
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                            type="button"
-                            className="btn-icon"
-                            onClick={() => handleDeleteLicense(lic)}
-                            title="Elimina licenza"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 6, flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <Building size={14} />
+                            {lic.property_name || 'Appartamento 2 Camere'}
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <KeyRound size={14} />
+                            <code style={{ background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 4 }}>
+                              {lic.license_key}
+                            </code>
+                          </span>
+                          {lic.expires_at && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <Calendar size={14} />
+                              Scadenza: {lic.expires_at}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {/* Copy WhatsApp Link Button */}
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => copyClientDirectLink(lic.license_key)}
+                          title="Copia link magico diretto da inviare al cliente su WhatsApp"
+                          style={{ fontSize: '0.78rem', gap: 5 }}
+                        >
+                          {isCopied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                          <span>{isCopied ? 'Link Copiato!' : 'Copia Link Cliente'}</span>
+                        </button>
+
+                        {/* Open Client View in New Tab */}
+                        <a
+                          href={clientDirectUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-secondary btn-sm"
+                          title="Apri il gestionale come cliente per verificare cosa vede"
+                          style={{ fontSize: '0.78rem', gap: 5, textDecoration: 'none' }}
+                        >
+                          <ExternalLink size={14} />
+                          <span>Apri Gestionale</span>
+                        </a>
+
+                        {/* Kill Switch Toggle Button */}
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${lic.is_active ? 'btn-danger' : 'btn-success'}`}
+                          onClick={() => handleToggleKillSwitch(lic)}
+                          title={lic.is_active ? 'Sospendi accesso per mancato pagamento' : 'Riattiva accesso al gestionale'}
+                          style={{ fontSize: '0.78rem', padding: '6px 12px', gap: 5 }}
+                        >
+                          <Power size={14} />
+                          <span>{lic.is_active ? 'Sospendi' : 'Riattiva'}</span>
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          onClick={() => handleDeleteLicense(lic)}
+                          title="Elimina licenza"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  if (isFullPage) {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        background: 'radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15) 0%, transparent 60%), var(--bg-app)',
+        padding: '24px 16px',
+        color: 'var(--text-primary)',
+      }}>
+        <div style={{ maxWidth: 860, margin: '0 auto' }}>
+          {content}
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div 
+        className="modal-content" 
+        style={{ maxWidth: 760, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} 
+        onClick={(e) => e.stopPropagation()}
+      >
+        {content}
       </div>
     </div>
   );
