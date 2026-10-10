@@ -22,18 +22,17 @@ const LOCAL_STORAGE_TENANTS_KEY = 'domus_landlord_tenants_v3';
 const LOCAL_STORAGE_PAYMENTS_KEY = 'domus_landlord_payments_v3';
 const LOCAL_STORAGE_EXPENSES_KEY = 'domus_landlord_expenses_v3';
 
-// Seed Data
-const SEED_TENANTS: Tenant[] = [];
-const SEED_PAYMENTS: Payment[] = [];
-const SEED_EXPENSES: HouseExpense[] = [];
-
 const isUUID = (str?: string): boolean => {
   if (!str) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 };
 
 export function getCurrentLicenseKey(): string | null {
-  return localStorage.getItem('domus_active_license_key') || localStorage.getItem('domus_current_auth_user_id') || null;
+  const lic = localStorage.getItem('domus_active_license_key');
+  if (lic) return lic.trim().toUpperCase();
+  const authId = localStorage.getItem('domus_current_auth_user_id');
+  if (authId) return authId.trim().toUpperCase();
+  return null;
 }
 
 function getScopedKey(baseKey: string): string {
@@ -69,10 +68,11 @@ async function safeUpdate(table: string, id: string, row: any): Promise<{ data: 
 export class StorageService {
   // Scoped localStorage Helpers
   static getLocalTenants(): Tenant[] {
+    const key = getCurrentLicenseKey();
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     let raw = localStorage.getItem(scopedKey);
-    // Backward compatibility fallback
-    if (!raw && getCurrentLicenseKey()) {
+    // Solo per DOMUS-FRANCESCO-NAPPI o se non c'è licenza recupera la cache legacy iniziale
+    if (!raw && (key === 'DOMUS-FRANCESCO-NAPPI' || !key)) {
       raw = localStorage.getItem(LOCAL_STORAGE_TENANTS_KEY);
     }
     if (!raw) return [];
@@ -86,15 +86,13 @@ export class StorageService {
   static setLocalTenants(data: Tenant[]): void {
     const scopedKey = getScopedKey(LOCAL_STORAGE_TENANTS_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
-    if (!getCurrentLicenseKey()) {
-      localStorage.setItem(LOCAL_STORAGE_TENANTS_KEY, JSON.stringify(data));
-    }
   }
 
   static getLocalPayments(): Payment[] {
+    const key = getCurrentLicenseKey();
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     let raw = localStorage.getItem(scopedKey);
-    if (!raw && getCurrentLicenseKey()) {
+    if (!raw && (key === 'DOMUS-FRANCESCO-NAPPI' || !key)) {
       raw = localStorage.getItem(LOCAL_STORAGE_PAYMENTS_KEY);
     }
     if (!raw) return [];
@@ -108,15 +106,13 @@ export class StorageService {
   static setLocalPayments(data: Payment[]): void {
     const scopedKey = getScopedKey(LOCAL_STORAGE_PAYMENTS_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
-    if (!getCurrentLicenseKey()) {
-      localStorage.setItem(LOCAL_STORAGE_PAYMENTS_KEY, JSON.stringify(data));
-    }
   }
 
   static getLocalExpenses(): HouseExpense[] {
+    const key = getCurrentLicenseKey();
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     let raw = localStorage.getItem(scopedKey);
-    if (!raw && getCurrentLicenseKey()) {
+    if (!raw && (key === 'DOMUS-FRANCESCO-NAPPI' || !key)) {
       raw = localStorage.getItem(LOCAL_STORAGE_EXPENSES_KEY);
     }
     if (!raw) return [];
@@ -130,9 +126,6 @@ export class StorageService {
   static setLocalExpenses(data: HouseExpense[]): void {
     const scopedKey = getScopedKey(LOCAL_STORAGE_EXPENSES_KEY);
     localStorage.setItem(scopedKey, JSON.stringify(data));
-    if (!getCurrentLicenseKey()) {
-      localStorage.setItem(LOCAL_STORAGE_EXPENSES_KEY, JSON.stringify(data));
-    }
   }
 
   // Test Supabase Connection
@@ -151,79 +144,44 @@ export class StorageService {
   // --- TENANTS (I Ragazzi) ---
   static async getTenants(): Promise<Tenant[]> {
     const supabase = getSupabase();
-    const currentKey = getCurrentLicenseKey();
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
 
     if (supabase) {
       try {
         const { data, error } = await supabase.from('bookings').select('*');
         if (!error && data) {
-          // Filtro multi-tenant basato su licenza
+          // Filtro multi-tenant rigoroso per licenza
           const userRows = currentKey
             ? data.filter((row: any) => {
                 if (currentKey === 'DOMUS-ADMIN' || currentKey === 'ADMIN') return true;
-                if (row.platform && row.platform === currentKey) return true;
-                if (row.user_id && row.user_id === currentKey) return true;
-                if (row.notes && row.notes.includes(currentKey)) return true;
-                // fallback per record iniziali esistenti
-                if (!row.platform || row.platform === 'student' || row.platform === 'direct') return true;
+                const rowLic = (row.platform || row.user_id || '').trim().toUpperCase();
+                if (rowLic === currentKey) return true;
+                if (row.notes && row.notes.toUpperCase().includes(currentKey)) return true;
+                // I record legacy appartengono unicamente a DOMUS-FRANCESCO-NAPPI
+                if (currentKey === 'DOMUS-FRANCESCO-NAPPI') {
+                  if (!row.platform || row.platform === 'student' || row.platform === 'direct') return true;
+                }
                 return false;
               })
-            : data;
+            : [];
 
-          if (userRows.length > 0) {
-            const list: Tenant[] = userRows.map((row: any) => ({
-              id: row.id,
-              name: row.guest_name,
-              phone: row.guest_phone || '',
-              email: row.guest_email || '',
-              room_id: (row.room_id as any) || 'room-1',
-              monthly_rent: Number(row.total_price) || 300,
-              deposit_amount: Number(row.deposit_paid) || 100,
-              start_date: row.check_in,
-              end_date: row.check_out,
-              is_active: row.booking_status === 'confirmed',
-              notes: row.notes || '',
-              created_at: row.created_at,
-            }));
-            this.setLocalTenants(list);
-            return list;
-          }
+          const list: Tenant[] = userRows.map((row: any) => ({
+            id: row.id,
+            name: row.guest_name,
+            phone: row.guest_phone || '',
+            email: row.guest_email || '',
+            room_id: (row.room_id as any) || 'room-1',
+            monthly_rent: Number(row.total_price) || 300,
+            deposit_amount: Number(row.deposit_paid) || 100,
+            start_date: row.check_in,
+            end_date: row.check_out,
+            is_active: row.booking_status === 'confirmed',
+            notes: row.notes || '',
+            created_at: row.created_at,
+          }));
 
-          // Se Supabase non ha ancora righe per questa licenza, controlla cache locale
-          const localTenants = this.getLocalTenants();
-          if (localTenants.length > 0 && currentKey) {
-            console.log('Migrazione automatica inquilini locali su licenza...', localTenants.length);
-            const migrated: Tenant[] = [];
-            for (const t of localTenants) {
-              const row: any = {
-                guest_name: t.name,
-                guest_phone: t.phone || '',
-                guest_email: t.email || '',
-                guest_document: '',
-                room_id: t.room_id,
-                check_in: t.start_date,
-                check_out: t.end_date,
-                guests_count: 1,
-                total_price: t.monthly_rent,
-                deposit_paid: t.deposit_amount,
-                payment_status: 'paid',
-                booking_status: t.is_active ? 'confirmed' : 'checked_out',
-                platform: currentKey,
-                notes: t.notes || '',
-                user_id: currentKey,
-              };
-              const { data: insData } = await safeInsert('bookings', row);
-              if (insData) {
-                migrated.push({ ...t, id: insData.id });
-              }
-            }
-            if (migrated.length > 0) {
-              this.setLocalTenants(migrated);
-              return migrated;
-            }
-          }
-
-          return [];
+          this.setLocalTenants(list);
+          return list;
         }
       } catch (e) {
         console.warn('Errore lettura tenant da Supabase:', e);
@@ -231,13 +189,13 @@ export class StorageService {
     }
 
     const local = this.getLocalTenants();
-    return local.length > 0 ? local : SEED_TENANTS;
+    return local;
   }
 
   static async saveTenant(tenant: Tenant): Promise<Tenant> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(tenant.id);
-    const currentKey = getCurrentLicenseKey();
+    const currentKey = (getCurrentLicenseKey() || 'DOMUS-FRANCESCO-NAPPI').trim().toUpperCase();
 
     if (supabase) {
       try {
@@ -254,12 +212,10 @@ export class StorageService {
           deposit_paid: tenant.deposit_amount,
           payment_status: 'paid',
           booking_status: tenant.is_active ? 'confirmed' : 'checked_out',
-          platform: currentKey || 'student',
+          platform: currentKey,
           notes: tenant.notes || '',
+          user_id: currentKey,
         };
-        if (currentKey) {
-          row.user_id = currentKey;
-        }
 
         if (!isExistingRecord) {
           const { data, error } = await safeInsert('bookings', row);
@@ -338,7 +294,7 @@ export class StorageService {
   // --- PAYMENTS ARCHIVE (Archivio Storico Pagamenti Negli Anni) ---
   static async getPayments(): Promise<Payment[]> {
     const supabase = getSupabase();
-    const currentKey = getCurrentLicenseKey();
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
 
     if (supabase) {
       try {
@@ -356,76 +312,39 @@ export class StorageService {
                 try {
                   if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
                 } catch {}
-                if (meta.license_key && meta.license_key === currentKey) return true;
-                if (row.user_id && row.user_id === currentKey) return true;
-                if (!meta.license_key && !row.user_id) return true; // legacy
+                const lic = (meta.license_key || row.user_id || '').trim().toUpperCase();
+                if (lic === currentKey) return true;
+                if (currentKey === 'DOMUS-FRANCESCO-NAPPI' && !meta.license_key && !row.user_id) {
+                  return true;
+                }
                 return false;
               })
-            : data;
+            : [];
 
-          if (userRows.length > 0) {
-            const list: Payment[] = userRows.map((row: any) => {
-              let meta: any = {};
-              try {
-                if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
-              } catch { meta = {}; }
+          const list: Payment[] = userRows.map((row: any) => {
+            let meta: any = {};
+            try {
+              if (row.notes && row.notes.startsWith('{')) meta = JSON.parse(row.notes);
+            } catch { meta = {}; }
 
-              return {
-                id: row.id,
-                tenant_id: meta.tenant_id || '',
-                tenant_name: meta.tenant_name || row.title.replace('Canone ', ''),
-                room_id: meta.room_id || 'room-1',
-                month_key: meta.month_key || row.date.slice(0, 7),
-                month_label: meta.month_label || row.title,
-                year: Number(meta.year) || new Date(row.date).getFullYear(),
-                amount: Number(row.amount),
-                payment_date: row.date,
-                payment_method: meta.payment_method || 'bonifico',
-                notes: meta.notes || '',
-                created_at: row.created_at,
-              };
-            });
-            this.setLocalPayments(list);
-            return list;
-          }
+            return {
+              id: row.id,
+              tenant_id: meta.tenant_id || '',
+              tenant_name: meta.tenant_name || row.title.replace('Canone ', ''),
+              room_id: meta.room_id || 'room-1',
+              month_key: meta.month_key || row.date.slice(0, 7),
+              month_label: meta.month_label || row.title,
+              year: Number(meta.year) || new Date(row.date).getFullYear(),
+              amount: Number(row.amount),
+              payment_date: row.date,
+              payment_method: meta.payment_method || 'bonifico',
+              notes: meta.notes || '',
+              created_at: row.created_at,
+            };
+          });
 
-          // Se Supabase ha 0 pagamenti per questo utente, sincronizza da cache
-          const localPayments = this.getLocalPayments();
-          if (localPayments.length > 0 && currentKey) {
-            console.log('Migrazione automatica pagamenti locali su licenza...');
-            const migrated: Payment[] = [];
-            for (const p of localPayments) {
-              const meta = {
-                tenant_id: p.tenant_id,
-                tenant_name: p.tenant_name,
-                room_id: p.room_id,
-                month_key: p.month_key,
-                month_label: p.month_label,
-                year: p.year,
-                payment_method: p.payment_method,
-                notes: p.notes || '',
-                license_key: currentKey,
-              };
-              const row: any = {
-                category: 'canone_affitto',
-                title: `Canone ${p.month_label} - ${p.tenant_name}`,
-                amount: p.amount,
-                date: p.payment_date,
-                notes: JSON.stringify(meta),
-                user_id: currentKey,
-              };
-              const { data: insData } = await safeInsert('expenses', row);
-              if (insData) {
-                migrated.push({ ...p, id: insData.id });
-              }
-            }
-            if (migrated.length > 0) {
-              this.setLocalPayments(migrated);
-              return migrated;
-            }
-          }
-
-          return [];
+          this.setLocalPayments(list);
+          return list;
         }
       } catch (e) {
         console.warn('Errore fetch pagamenti Supabase:', e);
@@ -433,13 +352,13 @@ export class StorageService {
     }
 
     const local = this.getLocalPayments();
-    return local.length > 0 ? local : SEED_PAYMENTS;
+    return local;
   }
 
   static async recordPayment(payment: Payment): Promise<Payment> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(payment.id);
-    const currentKey = getCurrentLicenseKey();
+    const currentKey = (getCurrentLicenseKey() || 'DOMUS-FRANCESCO-NAPPI').trim().toUpperCase();
 
     const meta = {
       tenant_id: payment.tenant_id,
@@ -450,7 +369,7 @@ export class StorageService {
       year: payment.year,
       payment_method: payment.payment_method,
       notes: payment.notes || '',
-      license_key: currentKey || undefined,
+      license_key: currentKey,
     };
 
     if (supabase) {
@@ -461,10 +380,8 @@ export class StorageService {
           amount: payment.amount,
           date: payment.payment_date,
           notes: JSON.stringify(meta),
+          user_id: currentKey,
         };
-        if (currentKey) {
-          row.user_id = currentKey;
-        }
 
         if (!isExistingRecord) {
           const { data, error } = await safeInsert('expenses', row);
@@ -522,7 +439,7 @@ export class StorageService {
   // --- HOUSE EXPENSES (Bollette & Spese) ---
   static async getExpenses(): Promise<HouseExpense[]> {
     const supabase = getSupabase();
-    const currentKey = getCurrentLicenseKey();
+    const currentKey = (getCurrentLicenseKey() || '').trim().toUpperCase();
 
     if (supabase) {
       try {
@@ -541,76 +458,44 @@ export class StorageService {
                 try {
                   if (row.notes && row.notes.startsWith('{')) parsedMeta = JSON.parse(row.notes);
                 } catch {}
-                if (parsedMeta.license_key && parsedMeta.license_key === currentKey) return true;
-                if (row.user_id && row.user_id === currentKey) return true;
-                if (!parsedMeta.license_key && !row.user_id) return true;
+                const lic = (parsedMeta.license_key || row.user_id || '').trim().toUpperCase();
+                if (lic === currentKey) return true;
+                if (currentKey === 'DOMUS-FRANCESCO-NAPPI' && !parsedMeta.license_key && !row.user_id) {
+                  return true;
+                }
                 return false;
               })
-            : data;
+            : [];
 
-          if (userRows.length > 0) {
-            const list: HouseExpense[] = userRows.map((row: any) => {
-              let noteText = row.notes || '';
-              let splits = undefined;
-              if (typeof noteText === 'string' && noteText.trim().startsWith('{')) {
-                try {
-                  const parsed = JSON.parse(noteText);
-                  noteText = parsed.text || '';
-                  if (Array.isArray(parsed.splits)) {
-                    splits = parsed.splits;
-                  }
-                } catch {
-                  // fallback a testo puro
+          const list: HouseExpense[] = userRows.map((row: any) => {
+            let noteText = row.notes || '';
+            let splits = undefined;
+            if (typeof noteText === 'string' && noteText.trim().startsWith('{')) {
+              try {
+                const parsed = JSON.parse(noteText);
+                noteText = parsed.text || '';
+                if (Array.isArray(parsed.splits)) {
+                  splits = parsed.splits;
                 }
-              }
-
-              return {
-                id: row.id,
-                title: row.title,
-                category: row.category as any,
-                amount: Number(row.amount),
-                date: row.date,
-                notes: noteText,
-                splits: splits,
-                created_at: row.created_at,
-              };
-            });
-            this.setLocalExpenses(list);
-            return list;
-          }
-
-          // Se Supabase non ha ancora righe per questa licenza, controlla cache locale
-          const localExpenses = this.getLocalExpenses();
-          if (localExpenses.length > 0 && currentKey) {
-            console.log('Migrazione automatica spese locali su licenza...');
-            const migrated: HouseExpense[] = [];
-            for (const exp of localExpenses) {
-              const metaObj = {
-                text: exp.notes || '',
-                splits: (exp.splits && exp.splits.length > 0) ? exp.splits : undefined,
-                license_key: currentKey,
-              };
-
-              const row: any = {
-                category: exp.category,
-                title: exp.title,
-                amount: exp.amount,
-                date: exp.date,
-                notes: JSON.stringify(metaObj),
-                user_id: currentKey,
-              };
-              const { data: insData } = await safeInsert('expenses', row);
-              if (insData) {
-                migrated.push({ ...exp, id: insData.id });
+              } catch {
+                // fallback
               }
             }
-            if (migrated.length > 0) {
-              this.setLocalExpenses(migrated);
-              return migrated;
-            }
-          }
 
-          return [];
+            return {
+              id: row.id,
+              title: row.title,
+              category: row.category as any,
+              amount: Number(row.amount),
+              date: row.date,
+              notes: noteText,
+              splits: splits,
+              created_at: row.created_at,
+            };
+          });
+
+          this.setLocalExpenses(list);
+          return list;
         }
       } catch (e) {
         console.warn('Errore fetch spese Supabase:', e);
@@ -618,18 +503,18 @@ export class StorageService {
     }
 
     const local = this.getLocalExpenses();
-    return local.length > 0 ? local : SEED_EXPENSES;
+    return local;
   }
 
   static async saveExpense(expense: HouseExpense): Promise<HouseExpense> {
     const supabase = getSupabase();
     const isExistingRecord = isUUID(expense.id);
-    const currentKey = getCurrentLicenseKey();
+    const currentKey = (getCurrentLicenseKey() || 'DOMUS-FRANCESCO-NAPPI').trim().toUpperCase();
 
     const metaObj = {
       text: expense.notes || '',
       splits: (expense.splits && expense.splits.length > 0) ? expense.splits : undefined,
-      license_key: currentKey || undefined,
+      license_key: currentKey,
     };
     const serializedNotes = JSON.stringify(metaObj);
 
@@ -641,10 +526,8 @@ export class StorageService {
           amount: expense.amount,
           date: expense.date,
           notes: serializedNotes,
+          user_id: currentKey,
         };
-        if (currentKey) {
-          row.user_id = currentKey;
-        }
 
         if (!isExistingRecord) {
           const { data, error } = await safeInsert('expenses', row);
