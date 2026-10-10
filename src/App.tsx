@@ -7,7 +7,6 @@ import { CurrentPaymentsView } from './components/CurrentPaymentsView';
 import { TenantsManager } from './components/TenantsManager';
 import { PaymentsArchiveView } from './components/PaymentsArchiveView';
 import { ExpensesView } from './components/ExpensesView';
-import { SupabaseConfigModal } from './components/SupabaseConfigModal';
 import { PaymentModal } from './components/PaymentModal';
 import { TenantModal } from './components/TenantModal';
 import { ExpenseModal } from './components/ExpenseModal';
@@ -16,7 +15,7 @@ import { StorageService, ROOMS } from './services/storageService';
 import type { Tenant, Payment, HouseExpense, Room, RoomId } from './types';
 
 function DomusRentDashboard() {
-  const { license, licenseKey, status, isGuestMode, loading: licenseLoading, isAdmin } = useLicense();
+  const { license, licenseKey, status, isGuestMode, loading: licenseLoading } = useLicense();
   const [activeTab, setActiveTab] = useState<NavTab>('payments_status');
   const [rooms] = useState<Room[]>(ROOMS);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -27,7 +26,6 @@ function DomusRentDashboard() {
 
   // Admin Licenses Modal state (Master Control)
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
 
   // Modals state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -200,30 +198,13 @@ function DomusRentDashboard() {
 
   if (isAdminRoute) {
     return (
-      <>
-        <AdminLicensesModal
-          isOpen={true}
-          isFullPage={true}
-          onClose={() => {
-            window.location.href = window.location.pathname;
-          }}
-          onOpenSupabaseConfig={() => setIsSupabaseModalOpen(true)}
-        />
-        {isSupabaseModalOpen && (
-          <div className="modal-overlay" onClick={() => setIsSupabaseModalOpen(false)}>
-            <div 
-              className="modal-content" 
-              style={{ maxWidth: 760, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} 
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
-                <button className="btn-icon" onClick={() => setIsSupabaseModalOpen(false)}>✕</button>
-              </div>
-              <SupabaseConfigModal onConnectionStatusChanged={loadAllData} />
-            </div>
-          </div>
-        )}
-      </>
+      <AdminLicensesModal
+        isOpen={true}
+        isFullPage={true}
+        onClose={() => {
+          window.location.href = window.location.pathname;
+        }}
+      />
     );
   }
 
@@ -237,22 +218,7 @@ function DomusRentDashboard() {
         <AdminLicensesModal 
           isOpen={isAdminModalOpen} 
           onClose={() => setIsAdminModalOpen(false)}
-          onOpenSupabaseConfig={() => setIsSupabaseModalOpen(true)}
         />
-        {isSupabaseModalOpen && (
-          <div className="modal-overlay" onClick={() => setIsSupabaseModalOpen(false)}>
-            <div 
-              className="modal-content" 
-              style={{ maxWidth: 760, width: '100%', maxHeight: '90vh', overflowY: 'auto' }} 
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
-                <button className="btn-icon" onClick={() => setIsSupabaseModalOpen(false)}>✕</button>
-              </div>
-              <SupabaseConfigModal onConnectionStatusChanged={loadAllData} />
-            </div>
-          </div>
-        )}
       </>
     );
   }
@@ -262,14 +228,10 @@ function DomusRentDashboard() {
       {/* Navbar: 100% blindata per il cliente */}
       <Navbar
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          if (tab === 'supabase' && !isAdmin) return;
-          setActiveTab(tab);
-        }}
+        onTabChange={(tab) => setActiveTab(tab)}
         isSupabaseConnected={isSupabaseConnected}
         onOpenNewPaymentModal={() => handleOpenPaymentModalWithContext()}
         onOpenNewTenantModal={() => handleOpenNewTenantModal()}
-        onOpenSupabaseModal={() => isAdmin && setActiveTab('supabase')}
         onOpenAdminLicensesModal={() => setIsAdminModalOpen(true)}
       />
 
@@ -330,13 +292,6 @@ function DomusRentDashboard() {
                 }}
                 onSaveExpense={handleSaveExpense}
                 onDeleteExpense={handleDeleteExpense}
-              />
-            )}
-
-            {/* Configurazione Supabase: ESCLUSIVA PER MASTER ADMIN */}
-            {isAdmin && activeTab === 'supabase' && (
-              <SupabaseConfigModal
-                onConnectionStatusChanged={loadAllData}
               />
             )}
           </>

@@ -12,8 +12,6 @@ import {
   Calendar, 
   Building, 
   ExternalLink, 
-  LogOut, 
-  Database,
   Pencil,
   Phone,
   MessageCircle,
@@ -26,17 +24,15 @@ interface AdminLicensesModalProps {
   isOpen: boolean;
   onClose: () => void;
   isFullPage?: boolean;
-  onOpenSupabaseConfig?: () => void;
 }
 
 export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({ 
   isOpen, 
   onClose,
   isFullPage = false,
-  onOpenSupabaseConfig,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('domus_admin_pin_auth') === 'true';
+    return sessionStorage.getItem('domus_admin_pin_auth_1598') === 'true';
   });
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -63,7 +59,8 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
   const [editPhone, setEditPhone] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const MASTER_PIN = '1234';
+  // Master PIN aggiornato
+  const MASTER_PIN = '1598';
 
   const loadLicenses = async () => {
     setLoading(true);
@@ -85,18 +82,12 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
     e.preventDefault();
     if (pinInput === MASTER_PIN) {
       setIsAuthenticated(true);
-      sessionStorage.setItem('domus_admin_pin_auth', 'true');
+      sessionStorage.setItem('domus_admin_pin_auth_1598', 'true');
       setPinError(false);
       loadLicenses();
     } else {
       setPinError(true);
     }
-  };
-
-  const handleLock = () => {
-    sessionStorage.removeItem('domus_admin_pin_auth');
-    setIsAuthenticated(false);
-    setPinInput('');
   };
 
   const handleClientNameChange = (val: string) => {
@@ -249,32 +240,6 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {isAuthenticated && onOpenSupabaseConfig && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={onOpenSupabaseConfig}
-              title="Configura connessione database Supabase"
-              style={{ fontSize: '0.78rem', gap: 6 }}
-            >
-              <Database size={14} />
-              <span>Database Cloud</span>
-            </button>
-          )}
-
-          {isAuthenticated && (
-            <button 
-              type="button" 
-              className="btn btn-secondary btn-sm" 
-              onClick={handleLock}
-              title="Blocca sessione amministratore"
-              style={{ fontSize: '0.78rem', gap: 5 }}
-            >
-              <LogOut size={14} />
-              <span>Blocca PIN</span>
-            </button>
-          )}
-
           <button 
             type="button" 
             className={isFullPage ? 'btn btn-secondary btn-sm' : 'btn-icon'} 
@@ -282,7 +247,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
             title={isFullPage ? 'Vai alla schermata principale' : 'Chiudi'}
             style={isFullPage ? { fontSize: '0.78rem' } : undefined}
           >
-            {isFullPage ? 'Chiudi' : <X size={18} />}
+            {isFullPage ? 'Chiudi Pannello' : <X size={18} />}
           </button>
         </div>
       </div>
@@ -332,7 +297,7 @@ export const AdminLicensesModal: FC<AdminLicensesModalProps> = ({
                 />
                 {pinError && (
                   <span style={{ fontSize: '0.75rem', color: '#fb7185', marginTop: 6, display: 'block' }}>
-                    PIN errato. Riprova (PIN predefinito: <code>1234</code>).
+                    PIN errato. Riprova.
                   </span>
                 )}
               </div>

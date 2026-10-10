@@ -7,12 +7,11 @@ import {
   Receipt, 
   PlusCircle, 
   UserPlus,
-  ShieldCheck,
-  LogOut
+  ShieldCheck
 } from 'lucide-react';
 import { useLicense } from '../context/LicenseContext';
 
-export type NavTab = 'payments_status' | 'tenants' | 'archive' | 'expenses' | 'supabase';
+export type NavTab = 'payments_status' | 'tenants' | 'archive' | 'expenses';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -20,7 +19,6 @@ interface NavbarProps {
   isSupabaseConnected: boolean;
   onOpenNewPaymentModal: () => void;
   onOpenNewTenantModal: () => void;
-  onOpenSupabaseModal: () => void;
   onOpenAdminLicensesModal: () => void;
 }
 
@@ -30,10 +28,9 @@ export const Navbar: FC<NavbarProps> = ({
   isSupabaseConnected,
   onOpenNewPaymentModal,
   onOpenNewTenantModal,
-  onOpenSupabaseModal,
   onOpenAdminLicensesModal,
 }) => {
-  const { license, isAdmin, logout } = useLicense();
+  const { license, isAdmin } = useLicense();
 
   return (
     <header className="navbar">
@@ -53,26 +50,14 @@ export const Navbar: FC<NavbarProps> = ({
               <h1>DomusRent</h1>
               {/* Se l'utente è l'Admin Master, può cliccare sul badge per aprire la config Supabase.
                   Per il CLIENTE, è un indicatore di sicurezza fisso e non cliccabile. */}
-              {isAdmin ? (
-                <button 
-                  id="btn-status-supabase"
-                  onClick={onOpenSupabaseModal}
-                  className="cloud-status-badge"
-                  title="Configurazione Database Supabase (Admin)"
-                >
-                  <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
-                  <span className="status-label">{isSupabaseConnected ? 'Cloud' : 'Locale'}</span>
-                </button>
-              ) : (
-                <div 
-                  className="cloud-status-badge" 
-                  style={{ cursor: 'default', userSelect: 'none' }}
-                  title="Connessione cloud sicura e attiva"
-                >
-                  <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
-                  <span className="status-label">Cloud</span>
-                </div>
-              )}
+              <div 
+                className="cloud-status-badge" 
+                style={{ cursor: 'default', userSelect: 'none' }}
+                title="Connessione cloud sicura e attiva"
+              >
+                <span className={`status-dot ${isSupabaseConnected ? 'connected' : 'local'}`} />
+                <span className="status-label">Cloud</span>
+              </div>
             </div>
             <span className="brand-subtitle">
               {license?.property_name || 'Appartamento 2 Camere'}
@@ -106,26 +91,16 @@ export const Navbar: FC<NavbarProps> = ({
             <span className="btn-text-short">+ Studente</span>
           </button>
 
-          {/* MASTER ADMIN EXCLUSIVE: visibile SOLO se autenticati come Master Admin */}
+          {/* MASTER ADMIN: link per accedere alla gestione licenze */}
           {isAdmin && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                onClick={onOpenAdminLicensesModal}
-                className="btn btn-secondary btn-icon btn-sm"
-                title="Pannello Master Gestione Licenze & Kill Switch"
-                style={{ width: 34, height: 34, padding: 0, borderColor: 'rgba(99, 102, 241, 0.6)' }}
-              >
-                <ShieldCheck size={16} color="#818cf8" />
-              </button>
-              <button
-                onClick={logout}
-                className="btn btn-secondary btn-icon btn-sm"
-                title="Esci dalla sessione Master Admin"
-                style={{ width: 34, height: 34, padding: 0 }}
-              >
-                <LogOut size={15} color="#fb7185" />
-              </button>
-            </div>
+            <button
+              onClick={onOpenAdminLicensesModal}
+              className="btn btn-secondary btn-icon btn-sm"
+              title="Pannello Master Gestione Licenze & Kill Switch"
+              style={{ width: 34, height: 34, padding: 0, borderColor: 'rgba(99, 102, 241, 0.6)' }}
+            >
+              <ShieldCheck size={16} color="#818cf8" />
+            </button>
           )}
         </div>
       </div>
