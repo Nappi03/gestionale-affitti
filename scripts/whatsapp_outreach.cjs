@@ -7,7 +7,20 @@ const EDGE_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge
 const SESSION_DIR = path.join(__dirname, '..', '.whatsapp_session');
 const LEADS_FILE = path.join(__dirname, '..', 'whatsapp_outreach', 'leads.json');
 const PROGRESS_FILE = path.join(__dirname, '..', 'whatsapp_outreach', 'progress.json');
+const CSV_FILE = path.join(__dirname, '..', 'whatsapp_outreach', 'storico_invii.csv');
 const DEMO_URL = 'https://gestionale-affitti-seven.vercel.app/?licenza=DOMUS-DEMO';
+
+// Helper per scrivere/aggiornare il log CSV per Excel
+function appendToCsv(row) {
+  const fileExists = fs.existsSync(CSV_FILE);
+  if (!fileExists) {
+    const header = 'Data e Ora;Telefono;Nome;Zona;Stanze;Prezzo;Stato;Anteprima Messaggio\n';
+    fs.writeFileSync(CSV_FILE, header, 'utf8');
+  }
+  const cleanPreview = (row.preview || '').replace(/[\r\n;]/g, ' ').slice(0, 100);
+  const line = `${row.date};+${row.phone};"${row.name}";"${row.zone}";${row.listings};"${row.price}";${row.status};"${cleanPreview}"\n`;
+  fs.appendFileSync(CSV_FILE, line, 'utf8');
+}
 
 // Helper per chiedere input da terminale
 function askQuestion(query) {
@@ -34,47 +47,32 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Generatore Spintax: varia il testo ad ogni messaggio per evitare il blocco per spam
+// Generatore Spintax ultra-conciso: disinnesca il malinteso ed evita il blocco spam
 function generateMessage(lead) {
   const greetings = ['Ciao', 'Buongiorno', 'Salve'];
   const greeting = greetings[Math.floor(Math.random() * greetings.length)];
 
-  const openers = [
-    `ti disturbo solo un minuto perché ho notato la tua stanza in affitto a ${lead.zone}.`,
-    `ti scrivo brevemente riguardo al tuo annuncio per la stanza a ${lead.zone}.`,
-    `ti contatto al volo perché ho visto la tua stanza in affitto a ${lead.zone}.`
+  const disclaimers = [
+    'ti premetto subito che non sto cercando una stanza per me!',
+    'ti anticipo subito che non cerco stanze in affitto per me!',
+    'ti premetto subito che non cerco alloggio per me!'
   ];
-  const opener = openers[Math.floor(Math.random() * openers.length)];
+  const disclaimer = disclaimers[Math.floor(Math.random() * disclaimers.length)];
 
-  let middle = '';
-  if (lead.numListings > 1) {
-    const multiPitches = [
-      `Ho visto che gestisci diverse stanze a Napoli: so bene che a fine mese diventa sempre una faticaccia rincorrere i ragazzi per i bonifici e dividere le bollette dell'Enel o di internet.`,
-      `Avendo notato che hai più stanze a Napoli, ti scrivo perché gestire più studenti significa spesso perdere un sacco di tempo a controllare chi ha saldato e rifare i conti delle bollette a mano.`
-    ];
-    middle = multiPitches[Math.floor(Math.random() * multiPitches.length)];
-  } else {
-    const singlePitches = [
-      `Parlando con vari proprietari che affittano a studenti a Napoli, mi dicono che a fine mese è sempre una noia controllare chi è in ritardo con l'affitto e calcolare le quote delle bollette.`,
-      `Per chi affitta a studenti è sempre una noia dover controllare le ricevute dei bonifici e dividere le bollette di luce e gas su fogli di carta o Excel.`
-    ];
-    middle = singlePitches[Math.floor(Math.random() * singlePitches.length)];
-  }
-
-  const solutions = [
-    `Per questo abbiamo creato DomusRent: una schermata semplicissima pensata per i proprietari di Napoli. Si apre con 1 click dal cellulare (senza scaricare app e senza password) e ti fa vedere subito chi è in regola e dividere le spese in pochi secondi.`,
-    `Per risolvere questo problema è nato DomusRent: un gestionale fatto apposta per chi affitta stanze. Da cellulare hai sempre sott'occhio le tue stanze, i ragazzi in regola e il calcolo automatico delle bollette senza fogli Excel.`
+  const intros = [
+    `Sono uno sviluppatore di Napoli e ho creato un gestionale semplicissimo per smartphone pensato per chi fitta stanze a studenti:`,
+    `Sono uno sviluppatore di Napoli e ho realizzato una schermata per cellulare pensata per chi affitta stanze a studenti:`
   ];
-  const solution = solutions[Math.floor(Math.random() * solutions.length)];
+  const intro = intros[Math.floor(Math.random() * intros.length)];
 
   const closings = [
-    `Ti lascio qui una demo gratuita di prova da guardare dal telefono:\n👉 ${DEMO_URL}\n\nSe ti fa comodo fammi un fischio qui: ti preparo il tuo accesso personale in 2 minuti per provarlo gratis!`,
-    `Puoi provarlo subito senza impegno cliccando qui dal cellulare:\n👉 ${DEMO_URL}\n\nDagli un'occhiata se hai 2 minuti e fammi sapere cosa ne pensi. Buona giornata!`,
-    `Ecco il link della demo da aprire direttamente dal telefono:\n👉 ${DEMO_URL}\n\nSe vuoi provarlo sulle tue stanze ti creo l'accesso gratuito in 2 minuti. A presto!`
+    `Se vuoi provarlo per le tue stanze fammi sapere, ti attivo volentieri una prova gratuita senza alcun vincolo.`,
+    `Se ti fa comodo provarlo con le tue stanze fammi sapere, ti attivo una prova gratuita senza alcun vincolo.`,
+    `Se ti fa piacere provarlo per le tue stanze fammi sapere, ti attivo volentieri una prova gratuita.`
   ];
   const closing = closings[Math.floor(Math.random() * closings.length)];
 
-  return `${greeting} ${lead.name}, ${opener}\n\n${middle}\n\n${solution}\n\n${closing}\n\n- Emanuele (Domus Rent)`;
+  return `${greeting} ${lead.name}, ${disclaimer}\n\n${intro}\n- vedi con 1 click chi ha pagato l'affitto del mese\n- dividi in automatico le bollette (luce, gas, internet) tra i ragazzi\n\nTi lascio una demo di prova da guardare dal telefono:\n👉 ${DEMO_URL}\n\n${closing}\n\n- Emanuele (Domus Rent)`;
 }
 
 // Carica stato avanzamento
@@ -214,6 +212,16 @@ async function runOutreach() {
           date: new Date().toISOString()
         };
         saveProgress(progress);
+        appendToCsv({
+          date: new Date().toLocaleString('it-IT'),
+          phone: lead.phone,
+          name: lead.name,
+          zone: lead.zone,
+          listings: lead.numListings,
+          price: lead.price,
+          status: 'NON_SU_WHATSAPP',
+          preview: 'Numero non registrato su WhatsApp'
+        });
         continue;
       }
 
@@ -244,6 +252,16 @@ async function runOutreach() {
         messagePreview: msg.slice(0, 80) + '...'
       };
       saveProgress(progress);
+      appendToCsv({
+        date: new Date().toLocaleString('it-IT'),
+        phone: lead.phone,
+        name: lead.name,
+        zone: lead.zone,
+        listings: lead.numListings,
+        price: lead.price,
+        status: 'INVIATO',
+        preview: msg
+      });
       successCount++;
 
       console.log(`✅ Inviato con successo a ${lead.name}!`);
@@ -262,6 +280,16 @@ async function runOutreach() {
         date: new Date().toISOString()
       };
       saveProgress(progress);
+      appendToCsv({
+        date: new Date().toLocaleString('it-IT'),
+        phone: lead.phone,
+        name: lead.name,
+        zone: lead.zone,
+        listings: lead.numListings,
+        price: lead.price,
+        status: 'ERRORE',
+        preview: err.message
+      });
       await new Promise(r => setTimeout(r, 5000));
     }
   }
