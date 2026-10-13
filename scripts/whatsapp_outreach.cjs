@@ -121,8 +121,18 @@ async function runOutreach() {
     return;
   }
 
-  const batchInput = await askQuestion('👉 Quanti messaggi vuoi inviare in questa sessione? (Consigliati: 15, max: 25): ');
-  const batchSize = Math.max(1, Math.min(30, parseInt(batchInput) || 15));
+  const cliArg = process.argv[2] ? parseInt(process.argv[2]) : null;
+  let batchSize = 15;
+  if (cliArg && !isNaN(cliArg)) {
+    batchSize = Math.max(1, Math.min(30, cliArg));
+    console.log(`👉 Quantità impostata da comando: ${batchSize} messaggi.`);
+  } else if (process.stdin.isTTY) {
+    const batchInput = await askQuestion('👉 Quanti messaggi vuoi inviare in questa sessione? (Consigliati: 15, max: 25): ');
+    batchSize = Math.max(1, Math.min(30, parseInt(batchInput) || 15));
+  } else {
+    console.log(`👉 Modalità rapida: invio default di 15 messaggi.`);
+    batchSize = 15;
+  }
   console.log(`\n🚀 Avvio sessione per ${batchSize} proprietari con intervalli di sicurezza anti-ban...\n`);
 
   // Assicura directory sessione
@@ -212,11 +222,17 @@ async function runOutreach() {
       await page.waitForSelector(chatBoxSelector, { timeout: 35000 });
 
       // Pausa umana prima di cliccare invio (2-4 secondi)
-      await new Promise(r => setTimeout(r, getRandomInt(2000, 4000)));
+      await new Promise(r => setTimeout(r, getRandomInt(2000, 3500)));
 
-      // Clicca nel box e premi Invio
-      await page.focus(chatBoxSelector);
-      await page.keyboard.press('Enter');
+      // Prova prima a cliccare il pulsante invio o premi Enter nel box
+      const sendButtonSelector = 'button span[data-icon="send"], button[aria-label="Invia"], button[aria-label="Send"], span[data-icon="send"]';
+      const sendBtn = await page.$(sendButtonSelector);
+      if (sendBtn) {
+        await sendBtn.click();
+      } else {
+        await page.focus(chatBoxSelector);
+        await page.keyboard.press('Enter');
+      }
 
       // Attendi conferma invio
       await new Promise(r => setTimeout(r, 3000));
