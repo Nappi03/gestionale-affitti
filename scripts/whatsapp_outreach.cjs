@@ -47,7 +47,7 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Generatore Spintax ultra-conciso: disinnesca il malinteso ed evita il blocco spam
+// Generatore Spintax ultra-conciso e naturale: NESSUN link nel primo messaggio (anti-spam 100%)
 function generateMessage(lead) {
   const greetings = ['Ciao', 'Buongiorno', 'Salve'];
   const greeting = greetings[Math.floor(Math.random() * greetings.length)];
@@ -66,13 +66,13 @@ function generateMessage(lead) {
   const intro = intros[Math.floor(Math.random() * intros.length)];
 
   const closings = [
-    `Se vuoi provarlo per le tue stanze fammi sapere, ti attivo volentieri una prova gratuita senza alcun vincolo.`,
-    `Se ti fa comodo provarlo con le tue stanze fammi sapere, ti attivo una prova gratuita senza alcun vincolo.`,
-    `Se ti fa piacere provarlo per le tue stanze fammi sapere, ti attivo volentieri una prova gratuita.`
+    `Se ti fa piacere dare un'occhiata a una demo veloce da cellulare fammi sapere, ti giro volentieri il link!`,
+    `Se ti andrebbe di provarlo senza impegno per le tue stanze fammi sapere, ti giro subito il link di prova!`,
+    `Se ti incuriosisce dare un'occhiata a una schermata di prova fammi un cenno, ti mando volentieri il link!`
   ];
   const closing = closings[Math.floor(Math.random() * closings.length)];
 
-  return `${greeting} ${lead.name}, ${disclaimer}\n\n${intro}\n- vedi con 1 click chi ha pagato l'affitto del mese\n- dividi in automatico le bollette (luce, gas, internet) tra i ragazzi\n\nTi lascio una demo di prova da guardare dal telefono:\n👉 ${DEMO_URL}\n\n${closing}\n\n- Emanuele (Domus Rent)`;
+  return `${greeting} ${lead.name}, ${disclaimer}\n\n${intro}\n- vedi con 1 click chi ha pagato l'affitto del mese\n- dividi in automatico le bollette (luce, gas, internet) tra i ragazzi\n\n${closing}\n\n- Emanuele (Domus Rent)`;
 }
 
 // Carica stato avanzamento
@@ -120,16 +120,16 @@ async function runOutreach() {
   }
 
   const cliArg = process.argv[2] ? parseInt(process.argv[2]) : null;
-  let batchSize = 15;
+  let batchSize = 8;
   if (cliArg && !isNaN(cliArg)) {
-    batchSize = Math.max(1, Math.min(30, cliArg));
+    batchSize = Math.max(1, Math.min(20, cliArg));
     console.log(`👉 Quantità impostata da comando: ${batchSize} messaggi.`);
   } else if (process.stdin.isTTY) {
-    const batchInput = await askQuestion('👉 Quanti messaggi vuoi inviare in questa sessione? (Consigliati: 15, max: 25): ');
-    batchSize = Math.max(1, Math.min(30, parseInt(batchInput) || 15));
+    const batchInput = await askQuestion('👉 Quanti messaggi vuoi inviare in questa sessione? (Consigliati: 8, max per sicurezza: 12): ');
+    batchSize = Math.max(1, Math.min(15, parseInt(batchInput) || 8));
   } else {
-    console.log(`👉 Modalità rapida: invio default di 15 messaggi.`);
-    batchSize = 15;
+    console.log(`👉 Modalità rapida: invio default di 8 messaggi.`);
+    batchSize = 8;
   }
   console.log(`\n🚀 Avvio sessione per ${batchSize} proprietari con intervalli di sicurezza anti-ban...\n`);
 
@@ -268,8 +268,8 @@ async function runOutreach() {
 
       // Se non è l'ultimo del batch, facciamo la pausa di sicurezza anti-ban
       if (i < batch.length - 1) {
-        const waitTime = getRandomInt(45, 80); // Pausa tra 45 e 80 secondi
-        console.log(`🛡️ Attivazione pausa umana di sicurezza...`);
+        const waitTime = getRandomInt(90, 180); // Pausa tra 90 e 180 secondi (1.5 - 3 minuti)
+        console.log(`🛡️ Attivazione pausa umana di sicurezza (intervallo anti-ban)...`);
         await sleepWithCountdown(waitTime);
       }
     } catch (err) {
