@@ -10,6 +10,9 @@ const PROGRESS_FILE = path.join(__dirname, '..', 'whatsapp_outreach', 'progress.
 const CSV_FILE = path.join(__dirname, '..', 'whatsapp_outreach', 'storico_invii.csv');
 const DEMO_URL = 'https://gestionale-affitti-seven.vercel.app/?licenza=DOMUS-DEMO';
 
+// LIMITE MASSIMO GIORNALIERO PER EVITARE BAN (Meta sorveglia gli account ripristinati)
+const DAILY_LIMIT = 6;
+
 // Helper per scrivere/aggiornare il log CSV per Excel
 function appendToCsv(row) {
   const fileExists = fs.existsSync(CSV_FILE);
@@ -37,42 +40,81 @@ function askQuestion(query) {
 // Pausa con conto alla rovescia a video
 async function sleepWithCountdown(seconds) {
   for (let s = seconds; s > 0; s--) {
-    process.stdout.write(`\r⏳ Pausa di sicurezza anti-ban: ${s}s rimanenti...  `);
+    const min = Math.floor(s / 60);
+    const sec = s % 60;
+    const timeStr = min > 0 ? `${min}m ${sec}s` : `${sec}s`;
+    process.stdout.write(`\r🛡️ Pausa di sicurezza anti-ban: ${timeStr} rimanenti...   `);
     await new Promise((r) => setTimeout(r, 1000));
   }
-  process.stdout.write(`\r✅ Pausa completata. Proseguo con il prossimo contatto...   \n`);
+  process.stdout.write(`\r✅ Pausa completata. Proseguo con il prossimo contatto...           \n`);
 }
 
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Generatore Spintax ultra-conciso e naturale: NESSUN link nel primo messaggio (anti-spam 100%)
-function generateMessage(lead) {
+// Pulizia del nome: estrae solo il vero nome proprio ed evita maiuscole sgraziate
+// es. "GIUSEPPE" -> "Giuseppe", "Luigi Nappi" -> "Luigi"
+function cleanLeadName(rawName) {
+  if (!rawName) return '';
+  const cleaned = rawName.trim().replace(/[^a-zA-ZàèéìòùÀÈÉÌÒÙ\s]/g, '');
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  const first = words[0];
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+// FILTRO DI QUALITÀ ANTI-SEGNALAZIONE:
+// Salta attività commerciali, svapo, agenzie, B&B o case vacanze che segnalano spam
+function checkLeadQuality(lead) {
+  const textToCheck = `${lead.name || ''} ${lead.title || ''} ${lead.zone || ''}`.toLowerCase();
+  const blacklistedKeywords = [
+    'svapo', 'vape', 'negozio', 'store', 'shop', 'agenzia', 'immobiliare',
+    'holiday', 'home', 'b&b', 'bed and breakfast', 'residence', 'hotel',
+    'rooms', 'suite', 'relais', 'affittacamere', 'grazie', 'wathsapp', 'whatsapp',
+    'contatto', 'srl', 'snc', 'sas', 'spa', 'servizi', 'realty', 'studio'
+  ];
+
+  for (const kw of blacklistedKeywords) {
+    if (textToCheck.includes(kw)) {
+      return { valid: false, reason: `Struttura ricettiva/commerciale (${kw})` };
+    }
+  }
+
+  const cleanName = cleanLeadName(lead.name);
+  if (!cleanName || cleanName.length < 2) {
+    return { valid: false, reason: 'Nome non valido o assente' };
+  }
+
+  return { valid: true, cleanName };
+}
+
+// Generatore Spintax: NESSUN link diretto, tono amichevole, nome pulito
+function generateMessage(lead, cleanName) {
   const greetings = ['Ciao', 'Buongiorno', 'Salve'];
   const greeting = greetings[Math.floor(Math.random() * greetings.length)];
 
   const disclaimers = [
     'ti premetto subito che non sto cercando una stanza per me!',
-    'ti anticipo subito che non cerco stanze in affitto per me!',
-    'ti premetto subito che non cerco alloggio per me!'
+    'ti anticipo subito che non cerco alloggio per me!',
+    'ti scrivo subito per tranquillizzarti che non cerco una camera per me!'
   ];
   const disclaimer = disclaimers[Math.floor(Math.random() * disclaimers.length)];
 
   const intros = [
-    `Sono uno sviluppatore di Napoli e ho creato un gestionale semplicissimo per smartphone pensato per chi fitta stanze a studenti:`,
-    `Sono uno sviluppatore di Napoli e ho realizzato una schermata per cellulare pensata per chi affitta stanze a studenti:`
+    `Sono uno sviluppatore qui a Napoli e ho creato un gestionale semplicissimo per smartphone per chi affitta stanze a studenti:`,
+    `Sono uno sviluppatore di Napoli e ho realizzato una schermata per cellulare pensata proprio per chi fitta stanze a studenti:`
   ];
   const intro = intros[Math.floor(Math.random() * intros.length)];
 
   const closings = [
     `Se ti fa piacere dare un'occhiata a una demo veloce da cellulare fammi sapere, ti giro volentieri il link!`,
-    `Se ti andrebbe di provarlo senza impegno per le tue stanze fammi sapere, ti giro subito il link di prova!`,
-    `Se ti incuriosisce dare un'occhiata a una schermata di prova fammi un cenno, ti mando volentieri il link!`
+    `Se ti andrebbe di provarlo senza impegno per le tue stanze fammi sapere, ti invio volentieri il link di prova!`,
+    `Se ti incuriosisce dare un'occhiata a una schermata di test fammi un cenno, ti mando subito il link!`
   ];
   const closing = closings[Math.floor(Math.random() * closings.length)];
 
-  return `${greeting} ${lead.name}, ${disclaimer}\n\n${intro}\n- vedi con 1 click chi ha pagato l'affitto del mese\n- dividi in automatico le bollette (luce, gas, internet) tra i ragazzi\n\n${closing}\n\n- Emanuele (Domus Rent)`;
+  return `${greeting} ${cleanName}, ${disclaimer}\n\n${intro}\n- vedi con 1 click chi ha pagato l'affitto del mese\n- dividi in automatico le bollette (luce, gas, internet) tra i ragazzi\n\n${closing}\n\n- Emanuele (Domus Rent)`;
 }
 
 // Carica stato avanzamento
@@ -81,90 +123,109 @@ function loadProgress() {
     try {
       return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf8'));
     } catch {
-      return { sent: {}, failed: {} };
+      return { sent: {}, failed: {}, skipped: {} };
     }
   }
-  return { sent: {}, failed: {} };
+  return { sent: {}, failed: {}, skipped: {} };
 }
 
 function saveProgress(progress) {
+  if (!progress.skipped) progress.skipped = {};
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2), 'utf8');
 }
 
 async function runOutreach() {
-  console.log('\n======================================================');
-  console.log('       DOMUS RENT - WHATSAPP OUTREACH AUTOMATICO       ');
-  console.log('======================================================\n');
+  console.log('\n==================================================================');
+  console.log('       DOMUS RENT - WHATSAPP OUTREACH (PROTEZIONE ANTI-BAN)       ');
+  console.log('==================================================================\n');
 
   if (!fs.existsSync(LEADS_FILE)) {
-    console.error(`Errore: File leads non trovato in ${LEADS_FILE}. Esegui prima extract_leads.cjs!`);
+    console.error(`Errore: File leads non trovato in ${LEADS_FILE}.`);
     return;
   }
 
   const leads = JSON.parse(fs.readFileSync(LEADS_FILE, 'utf8'));
   const progress = loadProgress();
 
-  const totalLeads = leads.length;
-  const alreadySent = Object.keys(progress.sent).length;
-  const remaining = leads.filter(l => !progress.sent[l.phone] && !progress.failed[l.phone]);
+  // 1. VERIFICA RIGIDA LIMITE GIORNALIERO
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const sentToday = Object.values(progress.sent).filter(item => item.date && item.date.startsWith(todayStr)).length;
 
-  console.log(`📊 STATO CAMPAGNA:`);
-  console.log(`   - Totale proprietari qualificati: ${totalLeads}`);
-  console.log(`   - Già contattati in precedenza:    ${alreadySent}`);
-  console.log(`   - Da contattare rimasti:          ${remaining.length}`);
-  console.log(`   - Link Demo inserito:             ${DEMO_URL}\n`);
-
-  if (remaining.length === 0) {
-    console.log('🎉 Complimenti! Tutti i contatti sono stati contattati.');
+  if (sentToday >= DAILY_LIMIT) {
+    console.log('🛑 ==============================================================');
+    console.log('            BLOCCO DI SICUREZZA ANTI-BAN ATTIVO');
+    console.log('==================================================================');
+    console.log(`⚠️ Hai già inviato ${sentToday} messaggi oggi (${todayStr}).`);
+    console.log(`🛡️ Per proteggere il tuo account WhatsApp da blocchi Meta,`);
+    console.log(`   il limite massimo consigliato è di ${DAILY_LIMIT} contatti al giorno.`);
+    console.log(`👉 Il prossimo invio sarà consentito domani mattina.`);
+    console.log('==================================================================\n');
     return;
   }
 
-  const cliArg = process.argv[2] ? parseInt(process.argv[2]) : null;
-  let batchSize = 8;
-  if (cliArg && !isNaN(cliArg)) {
-    batchSize = Math.max(1, Math.min(20, cliArg));
-    console.log(`👉 Quantità impostata da comando: ${batchSize} messaggi.`);
-  } else if (process.stdin.isTTY) {
-    const batchInput = await askQuestion('👉 Quanti messaggi vuoi inviare in questa sessione? (Consigliati: 8, max per sicurezza: 12): ');
-    batchSize = Math.max(1, Math.min(15, parseInt(batchInput) || 8));
-  } else {
-    console.log(`👉 Modalità rapida: invio default di 8 messaggi.`);
-    batchSize = 8;
+  const allowedRemainingToday = DAILY_LIMIT - sentToday;
+
+  const totalLeads = leads.length;
+  const alreadySent = Object.keys(progress.sent).length;
+  const remaining = leads.filter(l => !progress.sent[l.phone] && !progress.failed[l.phone] && !(progress.skipped && progress.skipped[l.phone]));
+
+  console.log(`📊 STATO CAMPAGNA:`);
+  console.log(`   - Totale proprietari qualificati: ${totalLeads}`);
+  console.log(`   - Già contattati finora:          ${alreadySent}`);
+  console.log(`   - Inviati oggi (${todayStr}):      ${sentToday} / ${DAILY_LIMIT}`);
+  console.log(`   - Limite massimo rimasto oggi:    ${allowedRemainingToday} messaggi`);
+  console.log(`   - Contatti ancora da processare:  ${remaining.length}\n`);
+
+  if (remaining.length === 0) {
+    console.log('🎉 Tutti i contatti sono stati processati!');
+    return;
   }
-  console.log(`\n🚀 Avvio sessione per ${batchSize} proprietari con intervalli di sicurezza anti-ban...\n`);
+
+  // Chiedi quantità rispettando il tetto giornaliero
+  let batchSize = Math.min(allowedRemainingToday, 5);
+  if (process.stdin.isTTY) {
+    const batchInput = await askQuestion(`👉 Quanti messaggi vuoi inviare adesso? (Consigliati: ${batchSize}, max consentiti oggi: ${allowedRemainingToday}): `);
+    const parsed = parseInt(batchInput);
+    if (!isNaN(parsed) && parsed > 0) {
+      batchSize = Math.min(allowedRemainingToday, parsed);
+    }
+  }
+
+  console.log(`\n🚀 Avvio sessione per ${batchSize} proprietari con intervalli anti-ban lunghi (2-4 min)...\n`);
 
   // Assicura directory sessione
   fs.mkdirSync(SESSION_DIR, { recursive: true });
 
-  console.log('🌐 Avvio di Microsoft Edge con WhatsApp Web...');
+  console.log('🌐 Avvio browser con profilo protetto e mascheramento automazione...');
   const browser = await puppeteer.launch({
     executablePath: EDGE_PATH,
-    headless: false, // Finestra visibile sul desktop
+    headless: false,
     userDataDir: SESSION_DIR,
     defaultViewport: null,
     args: [
       '--start-maximized',
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled'
+      '--disable-blink-features=AutomationControlled',
+      '--lang=it-IT,it'
     ],
   });
 
   const pages = await browser.pages();
   const page = pages[0] || (await browser.newPage());
 
+  // Maschera webdriver per evitare il fingerprinting anti-bot di Meta
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    window.chrome = { runtime: {} };
+    Object.defineProperty(navigator, 'languages', { get: () => ['it-IT', 'it', 'en-US', 'en'] });
+  });
+
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0');
 
   console.log('📲 Apertura di WhatsApp Web in corso...');
   await page.goto('https://web.whatsapp.com', { waitUntil: 'load', timeout: 60000 });
 
-  console.log('\n------------------------------------------------------');
-  console.log('⚠️ ATTENZIONE: Se non l\'hai già fatto, inquadra il QR Code');
-  console.log('   con WhatsApp Business dal tuo secondo smartphone.');
-  console.log('   (Lo farai solo la prima volta, poi rimarrà collegato).');
-  console.log('------------------------------------------------------\n');
-
-  // Attende che l'interfaccia principale di WhatsApp sia caricata
   try {
     await page.waitForSelector('#pane-side, div[contenteditable="true"], header', { timeout: 120000 });
     console.log('✅ WhatsApp Web collegato con successo e pronto!\n');
@@ -174,27 +235,44 @@ async function runOutreach() {
     return;
   }
 
-  const batch = remaining.slice(0, batchSize);
-  let successCount = 0;
+  let sentInThisSession = 0;
+  let leadIndex = 0;
 
-  for (let i = 0; i < batch.length; i++) {
-    const lead = batch[i];
-    const currentIndex = i + 1;
-    const msg = generateMessage(lead);
+  while (sentInThisSession < batchSize && leadIndex < remaining.length) {
+    const lead = remaining[leadIndex];
+    leadIndex++;
 
-    console.log(`\n------------------------------------------------------`);
-    console.log(`[${currentIndex}/${batchSize}] 👤 Contatto: ${lead.name} (${lead.numListings} stanze)`);
-    console.log(`   📞 Telefono: +${lead.phone} | Zona: ${lead.zone} | Prezzo: ${lead.price}`);
-    console.log(`------------------------------------------------------`);
+    // Verifica qualità del lead
+    const quality = checkLeadQuality(lead);
+    if (!quality.valid) {
+      console.log(`⏩ [SKIP SICUREZZA] ${lead.name} (+${lead.phone}) scartato: ${quality.reason}`);
+      if (!progress.skipped) progress.skipped = {};
+      progress.skipped[lead.phone] = {
+        name: lead.name,
+        reason: quality.reason,
+        date: new Date().toISOString()
+      };
+      saveProgress(progress);
+      continue;
+    }
+
+    const cleanName = quality.cleanName;
+    const msg = generateMessage(lead, cleanName);
+    const currentNumber = sentInThisSession + 1;
+
+    console.log(`\n------------------------------------------------------------------`);
+    console.log(`[${currentNumber}/${batchSize}] 👤 Contatto Privato: ${cleanName} (Originale: ${lead.name})`);
+    console.log(`   📞 Telefono: +${lead.phone} | Zona: ${lead.zone} | Stanze: ${lead.numListings}`);
+    console.log(`------------------------------------------------------------------`);
 
     try {
       const chatUrl = `https://web.whatsapp.com/send?phone=${lead.phone}&text=${encodeURIComponent(msg)}`;
       await page.goto(chatUrl, { waitUntil: 'load', timeout: 45000 });
 
-      // Attesa breve caricamento chat
-      await new Promise(r => setTimeout(r, 4000));
+      // Attesa realistica caricamento chat
+      await new Promise(r => setTimeout(r, getRandomInt(4000, 6000)));
 
-      // Controllo se il numero non è registrato su WhatsApp (modal di errore)
+      // Controllo se il numero non è registrato su WhatsApp
       const isInvalidNumber = await page.evaluate(() => {
         const modal = document.querySelector('div[data-animate-modal-popup="true"]');
         if (modal) {
@@ -205,7 +283,7 @@ async function runOutreach() {
       });
 
       if (isInvalidNumber) {
-        console.log(`⚠️ Numero +${lead.phone} non registrato su WhatsApp o non valido. Salto.`);
+        console.log(`⚠️ Numero +${lead.phone} non registrato su WhatsApp. Salto.`);
         progress.failed[lead.phone] = {
           name: lead.name,
           reason: 'invalid_number_on_whatsapp',
@@ -225,14 +303,18 @@ async function runOutreach() {
         continue;
       }
 
-      // Attende il campo di testo o il pulsante invio
+      // Attende il box di testo
       const chatBoxSelector = 'footer div[contenteditable="true"]';
       await page.waitForSelector(chatBoxSelector, { timeout: 35000 });
 
-      // Pausa umana prima di cliccare invio (2-4 secondi)
-      await new Promise(r => setTimeout(r, getRandomInt(2000, 3500)));
+      // Movimento casuale del mouse (simula presenza umana)
+      await page.mouse.move(getRandomInt(250, 600), getRandomInt(350, 650));
 
-      // Prova prima a cliccare il pulsante invio o premi Enter nel box
+      // Pausa di rilettura naturale prima dell'invio (4 - 7 secondi)
+      const reviewPause = getRandomInt(4000, 7000);
+      await new Promise(r => setTimeout(r, reviewPause));
+
+      // Click sul pulsante di invio
       const sendButtonSelector = 'button span[data-icon="send"], button[aria-label="Invia"], button[aria-label="Send"], span[data-icon="send"]';
       const sendBtn = await page.$(sendButtonSelector);
       if (sendBtn) {
@@ -242,11 +324,12 @@ async function runOutreach() {
         await page.keyboard.press('Enter');
       }
 
-      // Attendi conferma invio
-      await new Promise(r => setTimeout(r, 3000));
+      // Attesa conferma invio
+      await new Promise(r => setTimeout(r, 4000));
 
       progress.sent[lead.phone] = {
         name: lead.name,
+        cleanName: cleanName,
         zone: lead.zone,
         date: new Date().toISOString(),
         messagePreview: msg.slice(0, 80) + '...'
@@ -262,14 +345,14 @@ async function runOutreach() {
         status: 'INVIATO',
         preview: msg
       });
-      successCount++;
+      sentInThisSession++;
 
-      console.log(`✅ Inviato con successo a ${lead.name}!`);
+      console.log(`✅ Messaggio inviato con successo a ${cleanName}!`);
 
-      // Se non è l'ultimo del batch, facciamo la pausa di sicurezza anti-ban
-      if (i < batch.length - 1) {
-        const waitTime = getRandomInt(90, 180); // Pausa tra 90 e 180 secondi (1.5 - 3 minuti)
-        console.log(`🛡️ Attivazione pausa umana di sicurezza (intervallo anti-ban)...`);
+      // Se non è l'ultimo del batch, pausa lunga di sicurezza (2 - 4 minuti)
+      if (sentInThisSession < batchSize) {
+        const waitTime = getRandomInt(120, 240); // 120-240s = 2-4 minuti
+        console.log(`🛡️ Attivazione intervallo di sicurezza anti-ban...`);
         await sleepWithCountdown(waitTime);
       }
     } catch (err) {
@@ -294,12 +377,13 @@ async function runOutreach() {
     }
   }
 
-  console.log('\n======================================================');
-  console.log(`🎉 SESSIONE TERMINATA CON SUCCESSO!`);
-  console.log(`   - Messaggi inviati con successo in questa sessione: ${successCount}`);
-  console.log(`   - Totale complessivo inviati finora: ${Object.keys(progress.sent).length} su ${totalLeads}`);
-  console.log('======================================================\n');
-  console.log('Puoi lasciare la finestra aperta per rispondere se qualcuno ti scrive, oppure chiudere.');
+  console.log('\n==================================================================');
+  console.log(`🎉 SESSIONE TERMINATA!`);
+  console.log(`   - Messaggi inviati con successo adesso: ${sentInThisSession}`);
+  console.log(`   - Totale inviati oggi: ${sentToday + sentInThisSession} / ${DAILY_LIMIT}`);
+  console.log(`   - Totale complessivo campagna: ${Object.keys(progress.sent).length} su ${totalLeads}`);
+  console.log('==================================================================\n');
 }
 
 runOutreach().catch(console.error);
+
