@@ -11,7 +11,7 @@ const CSV_FILE = path.join(__dirname, '..', 'whatsapp_outreach', 'storico_invii.
 const DEMO_URL = 'https://gestionale-affitti-seven.vercel.app/?licenza=DOMUS-DEMO';
 
 // LIMITE MASSIMO GIORNALIERO PER EVITARE BAN (Meta sorveglia gli account ripristinati)
-const DAILY_LIMIT = 6;
+const DAILY_LIMIT = 10;
 
 // Helper per scrivere/aggiornare il log CSV per Excel
 function appendToCsv(row) {
@@ -182,8 +182,13 @@ async function runOutreach() {
   }
 
   // Chiedi quantità rispettando il tetto giornaliero
-  let batchSize = Math.min(allowedRemainingToday, 5);
-  if (process.stdin.isTTY) {
+  const cliArg = process.argv[2] ? parseInt(process.argv[2]) : null;
+  let batchSize = Math.min(allowedRemainingToday, 8);
+
+  if (cliArg && !isNaN(cliArg)) {
+    batchSize = Math.min(allowedRemainingToday, Math.max(1, cliArg));
+    console.log(`👉 Quantità impostata da comando: ${batchSize} messaggi.`);
+  } else if (process.stdin.isTTY) {
     const batchInput = await askQuestion(`👉 Quanti messaggi vuoi inviare adesso? (Consigliati: ${batchSize}, max consentiti oggi: ${allowedRemainingToday}): `);
     const parsed = parseInt(batchInput);
     if (!isNaN(parsed) && parsed > 0) {
